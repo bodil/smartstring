@@ -1,0 +1,30 @@
+[package]
+name = "smartstring"
+version = "0.1.0"
+authors = ["Bodil Stokke <bodil@bodil.org>"]
+edition = "2018"
+license = "MPL-2.0+"
+description = "Compact inlined strings"
+repository = "https://github.com/bodil/smartstring"
+documentation = "http://docs.rs/smartstring"
+readme = "./README.md"
+categories = ["data-structures"]
+keywords = ["cache-local", "cpu-cache", "small-string", "inline-string"]
+exclude = ["release.toml", "proptest-regressions/**"]
+
+[[bench]]
+name = "smartstring"
+harness = false
+
+[features]
+test = ["arbitrary"]
+
+[dependencies]
+static_assertions = "1.1.0"
+arbitrary = { version = "0.4", optional = true, features = ["derive"] }
+
+[dev-dependencies]
+proptest = "0.9.6"
+proptest-derive = "0.1.2"
+criterion = "0.3.2"
+rand = "0.7.3"
