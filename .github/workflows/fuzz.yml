@@ -45,6 +45,7 @@ jobs:
               run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=600 # seconds
             - uses: actions/upload-artifact@v1
               name: Publish artifacts
+              continue-on-error: true
               with:
                   name: fuzz-artifacts
                   path: fuzz/artifacts
