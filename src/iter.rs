@@ -70,12 +70,10 @@ where
             DrainCast::Boxed {
                 string,
                 ref mut iter,
-            } => {
-                unsafe {
-                    drop_in_place(iter);
-                    (*string).try_demote();
-                }
-            }
+            } => unsafe {
+                drop_in_place(iter);
+                (*string).try_demote();
+            },
             DrainCast::Inline {
                 string, start, end, ..
             } => {
