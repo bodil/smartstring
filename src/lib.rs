@@ -44,7 +44,7 @@
 //! The [`Compact`][Compact] variant is the same size as [`String`][String] and
 //! relies on pointer alignment to be able to store a discriminant bit in its
 //! inline form that will never be present in its [`String`][String] form, thus
-//! giving us 24 bytes (on 64-bit architectures) minus one bit to encore our
+//! giving us 24 bytes (on 64-bit architectures) minus one bit to encode our
 //! inline string. It uses 23 bytes to store the string data and the remaining
 //! 7 bits to encode the string's length. When the available space is exceeded,
 //! it swaps itself out with a [`String`][String] containing its previous
