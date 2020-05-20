@@ -459,10 +459,4 @@ mod tests {
         let mut string = SmartString::<Compact>::from("מ");
         string.drain(..=usize::max_value());
     }
-
-    #[test]
-    fn string_drain_overflow() {
-        let mut string = String::new();
-        string.drain(..=usize::max_value());
-    }
 }
