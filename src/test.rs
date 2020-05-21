@@ -74,7 +74,8 @@ impl TestBounds {
             Self::From(start) if start > &len || !control.is_char_boundary(*start) => true,
             Self::To(end) if end > &len || !control.is_char_boundary(*end) => true,
             Self::Inclusive(start, end)
-                if start > end
+                if *end == usize::max_value()
+                    || *start > (end + 1)
                     || start > &len
                     || end > &len
                     || !control.is_char_boundary(*start)
@@ -458,5 +459,13 @@ mod tests {
         // )
         let mut string = SmartString::<Compact>::from("מ");
         string.drain(..=usize::max_value());
+    }
+
+    #[test]
+    fn shouldnt_panic_on_inclusive_range_end_one_less_than_start() {
+        test_everything::<Compact>(
+            Constructor::FromString("\'\'\'\'\'[[[[[[[[[[[-[[[[[[[[[[[[[[[[[[[[[[".to_string()),
+            vec![Action::Slice(TestBounds::Inclusive(1, 0))],
+        )
     }
 }
