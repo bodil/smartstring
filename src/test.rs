@@ -146,8 +146,8 @@ pub enum Action {
     Clear,
     IntoString,
     Retain(String),
-    // Drain(TestBounds),
-    // ReplaceRange(TestBounds, String),
+    Drain(TestBounds),
+    ReplaceRange(TestBounds, String),
 }
 
 impl Action {
@@ -229,100 +229,112 @@ impl Action {
                 let f = |ch| filter.contains(ch);
                 control.retain(f);
                 subject.retain(f);
-            } // FIXME: skipping `drain` and `replace_range` tests, pending https://github.com/rust-lang/rust/issues/72237
-              // Self::Drain(range) => {
-              //     if range.should_panic(&control) {
-              //         assert_panic(|| match range {
-              //             TestBounds::Range(start, end) => {
-              //                 (control.drain(start..end), subject.drain(start..end))
-              //             }
-              //             TestBounds::From(start) => (control.drain(start..), subject.drain(start..)),
-              //             TestBounds::To(end) => (control.drain(..end), subject.drain(..end)),
-              //             TestBounds::Full => (control.drain(..), subject.drain(..)),
-              //             TestBounds::Inclusive(start, end) => {
-              //                 (control.drain(start..=end), subject.drain(start..=end))
-              //             }
-              //             TestBounds::ToInclusive(end) => {
-              //                 (control.drain(..=end), subject.drain(..=end))
-              //             }
-              //         })
-              //     } else {
-              //         let (control_iter, subject_iter) = match range {
-              //             TestBounds::Range(start, end) => {
-              //                 (control.drain(start..end), subject.drain(start..end))
-              //             }
-              //             TestBounds::From(start) => (control.drain(start..), subject.drain(start..)),
-              //             TestBounds::To(end) => (control.drain(..end), subject.drain(..end)),
-              //             TestBounds::Full => (control.drain(..), subject.drain(..)),
-              //             TestBounds::Inclusive(start, end) => {
-              //                 (control.drain(start..=end), subject.drain(start..=end))
-              //             }
-              //             TestBounds::ToInclusive(end) => {
-              //                 (control.drain(..=end), subject.drain(..=end))
-              //             }
-              //         };
-              //         let control_result: String = control_iter.collect();
-              //         let subject_result: String = subject_iter.collect();
-              //         assert_eq!(control_result, subject_result);
-              //     }
-              // }
-              // Self::ReplaceRange(range, string) => {
-              //     if range.should_panic(&control) {
-              //         assert_panic(|| match range {
-              //             TestBounds::Range(start, end) => {
-              //                 control.replace_range(start..end, &string);
-              //                 subject.replace_range(start..end, &string);
-              //             }
-              //             TestBounds::From(start) => {
-              //                 control.replace_range(start.., &string);
-              //                 subject.replace_range(start.., &string);
-              //             }
-              //             TestBounds::To(end) => {
-              //                 control.replace_range(..end, &string);
-              //                 subject.replace_range(..end, &string);
-              //             }
-              //             TestBounds::Full => {
-              //                 control.replace_range(.., &string);
-              //                 subject.replace_range(.., &string);
-              //             }
-              //             TestBounds::Inclusive(start, end) => {
-              //                 control.replace_range(start..=end, &string);
-              //                 subject.replace_range(start..=end, &string);
-              //             }
-              //             TestBounds::ToInclusive(end) => {
-              //                 control.replace_range(..=end, &string);
-              //                 subject.replace_range(..=end, &string);
-              //             }
-              //         })
-              //     } else {
-              //         match range {
-              //             TestBounds::Range(start, end) => {
-              //                 control.replace_range(start..end, &string);
-              //                 subject.replace_range(start..end, &string);
-              //             }
-              //             TestBounds::From(start) => {
-              //                 control.replace_range(start.., &string);
-              //                 subject.replace_range(start.., &string);
-              //             }
-              //             TestBounds::To(end) => {
-              //                 control.replace_range(..end, &string);
-              //                 subject.replace_range(..end, &string);
-              //             }
-              //             TestBounds::Full => {
-              //                 control.replace_range(.., &string);
-              //                 subject.replace_range(.., &string);
-              //             }
-              //             TestBounds::Inclusive(start, end) => {
-              //                 control.replace_range(start..=end, &string);
-              //                 subject.replace_range(start..=end, &string);
-              //             }
-              //             TestBounds::ToInclusive(end) => {
-              //                 control.replace_range(..=end, &string);
-              //                 subject.replace_range(..=end, &string);
-              //             }
-              //         }
-              //     }
-              // }
+            }
+            Self::Drain(range) => {
+                // FIXME: ignoring inclusive bounds at usize::max_value(), pending https://github.com/rust-lang/rust/issues/72237
+                match range {
+                    TestBounds::Inclusive(_, end) if end == usize::max_value() => return,
+                    TestBounds::ToInclusive(end) if end == usize::max_value() => return,
+                    _ => {}
+                }
+                if range.should_panic(&control) {
+                    assert_panic(|| match range {
+                        TestBounds::Range(start, end) => {
+                            (control.drain(start..end), subject.drain(start..end))
+                        }
+                        TestBounds::From(start) => (control.drain(start..), subject.drain(start..)),
+                        TestBounds::To(end) => (control.drain(..end), subject.drain(..end)),
+                        TestBounds::Full => (control.drain(..), subject.drain(..)),
+                        TestBounds::Inclusive(start, end) => {
+                            (control.drain(start..=end), subject.drain(start..=end))
+                        }
+                        TestBounds::ToInclusive(end) => {
+                            (control.drain(..=end), subject.drain(..=end))
+                        }
+                    })
+                } else {
+                    let (control_iter, subject_iter) = match range {
+                        TestBounds::Range(start, end) => {
+                            (control.drain(start..end), subject.drain(start..end))
+                        }
+                        TestBounds::From(start) => (control.drain(start..), subject.drain(start..)),
+                        TestBounds::To(end) => (control.drain(..end), subject.drain(..end)),
+                        TestBounds::Full => (control.drain(..), subject.drain(..)),
+                        TestBounds::Inclusive(start, end) => {
+                            (control.drain(start..=end), subject.drain(start..=end))
+                        }
+                        TestBounds::ToInclusive(end) => {
+                            (control.drain(..=end), subject.drain(..=end))
+                        }
+                    };
+                    let control_result: String = control_iter.collect();
+                    let subject_result: String = subject_iter.collect();
+                    assert_eq!(control_result, subject_result);
+                }
+            }
+            Self::ReplaceRange(range, string) => {
+                // FIXME: ignoring inclusive bounds at usize::max_value(), pending https://github.com/rust-lang/rust/issues/72237
+                match range {
+                    TestBounds::Inclusive(_, end) if end == usize::max_value() => return,
+                    TestBounds::ToInclusive(end) if end == usize::max_value() => return,
+                    _ => {}
+                }
+                if range.should_panic(&control) {
+                    assert_panic(|| match range {
+                        TestBounds::Range(start, end) => {
+                            control.replace_range(start..end, &string);
+                            subject.replace_range(start..end, &string);
+                        }
+                        TestBounds::From(start) => {
+                            control.replace_range(start.., &string);
+                            subject.replace_range(start.., &string);
+                        }
+                        TestBounds::To(end) => {
+                            control.replace_range(..end, &string);
+                            subject.replace_range(..end, &string);
+                        }
+                        TestBounds::Full => {
+                            control.replace_range(.., &string);
+                            subject.replace_range(.., &string);
+                        }
+                        TestBounds::Inclusive(start, end) => {
+                            control.replace_range(start..=end, &string);
+                            subject.replace_range(start..=end, &string);
+                        }
+                        TestBounds::ToInclusive(end) => {
+                            control.replace_range(..=end, &string);
+                            subject.replace_range(..=end, &string);
+                        }
+                    })
+                } else {
+                    match range {
+                        TestBounds::Range(start, end) => {
+                            control.replace_range(start..end, &string);
+                            subject.replace_range(start..end, &string);
+                        }
+                        TestBounds::From(start) => {
+                            control.replace_range(start.., &string);
+                            subject.replace_range(start.., &string);
+                        }
+                        TestBounds::To(end) => {
+                            control.replace_range(..end, &string);
+                            subject.replace_range(..end, &string);
+                        }
+                        TestBounds::Full => {
+                            control.replace_range(.., &string);
+                            subject.replace_range(.., &string);
+                        }
+                        TestBounds::Inclusive(start, end) => {
+                            control.replace_range(start..=end, &string);
+                            subject.replace_range(start..=end, &string);
+                        }
+                        TestBounds::ToInclusive(end) => {
+                            control.replace_range(..=end, &string);
+                            subject.replace_range(..=end, &string);
+                        }
+                    }
+                }
+            }
         }
     }
 }
