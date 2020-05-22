@@ -18,6 +18,7 @@ jobs:
                     - ordering_prefixed
                     - smartstring_compact
                     - smartstring_prefixed
+                    - smartstring_lazycompact
         steps:
             - uses: actions/checkout@v2
               name: Checkout project

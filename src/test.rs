@@ -342,13 +342,15 @@ impl Action {
 fn assert_invariants<Mode: SmartStringMode>(control: &str, subject: &SmartString<Mode>) {
     assert_eq!(control.len(), subject.len());
     assert_eq!(control, subject.as_str());
-    assert_eq!(
-        subject.is_inline(),
-        subject.len() <= Mode::MAX_INLINE,
-        "len {} should be inline (MAX_INLINE = {}) but was boxed",
-        subject.len(),
-        Mode::MAX_INLINE
-    );
+    if Mode::DEALLOC {
+        assert_eq!(
+            subject.is_inline(),
+            subject.len() <= Mode::MAX_INLINE,
+            "len {} should be inline (MAX_INLINE = {}) but was boxed",
+            subject.len(),
+            Mode::MAX_INLINE
+        );
+    }
     assert_eq!(
         control.partial_cmp(&"ordering test".to_string()),
         subject.partial_cmp("ordering test")
@@ -376,12 +378,17 @@ pub fn test_ordering<Mode: SmartStringMode>(left: String, right: String) {
 mod tests {
     use super::{Action::*, Constructor::*, TestBounds::*, *};
 
-    use crate::{Compact, Prefixed};
+    use crate::{Compact, LazyCompact, Prefixed};
 
     proptest! {
         #[test]
         fn proptest_everything_compact(constructor: Constructor, actions: Vec<Action>) {
             test_everything::<Compact>(constructor, actions);
+        }
+
+        #[test]
+        fn proptest_everything_lazycompact(constructor: Constructor, actions: Vec<Action>) {
+            test_everything::<LazyCompact>(constructor, actions);
         }
 
         #[test]
@@ -392,6 +399,11 @@ mod tests {
         #[test]
         fn proptest_ordering_compact(left: String, right: String) {
             test_ordering::<Compact>(left,right)
+        }
+
+        #[test]
+        fn proptest_ordering_lazycompact(left: String, right: String) {
+            test_ordering::<LazyCompact>(left,right)
         }
 
         #[test]

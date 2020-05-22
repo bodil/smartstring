@@ -6,11 +6,13 @@
 //!
 //! [`SmartString`][SmartString] is a wrapper around [`String`][String] which offers
 //! automatic inlining of small strings, as well as, optionally, improved cache locality
-//! for comparisons between larger strings. It comes in two flavours:
-//! [`Compact`][Compact], which takes up exactly as much space as a [`String`][String]
-//! and is generally a little faster, and [`Prefixed`][Prefixed], which is usually
-//! slower but can be much faster at string comparisons if your strings tend to
-//! have a certain shape. [`Compact`][Compact] is the default.
+//! for comparisons between larger strings. It comes in three flavours:
+//! [`LazyCompact`][LazyCompact], which takes up exactly as much space as a [`String`][String]
+//! and is generally a little faster; [`Compact`][Compact], which is the same as
+//! [`LazyCompact`][LazyCompact] except it will aggressively re-inline any expanded
+//! [`String`][String]s which become short enough to do so; and [`Prefixed`][Prefixed],
+//! which is usually slower but can be much faster at string comparisons if your strings
+//! tend to have a certain shape. [`LazyCompact`][LazyCompact] is the default.
 //!
 //! ## What Is It For?
 //!
@@ -60,6 +62,12 @@
 //! implementation that does the exact same thing with no need to go unsafe
 //! in your own code.)
 //!
+//! [`LazyCompact`][LazyCompact] looks the same as [`Compact`][Compact], except
+//! it never re-inlines a string that's already been heap allocated, instead
+//! keeping the allocation around in case it needs it. This makes for less
+//! cache local strings, but is the best choice if you're more worried about
+//! time spent on unnecessary allocations than cache locality.
+//!
 //! The [`Prefixed`][Prefixed] variant stores strings as one [`String`][String]
 //! preceded by up to the first
 //! [`FRAGMENT_SIZE`][FRAGMENT_SIZE] bytes of its content plus one byte
@@ -105,6 +113,7 @@
 //!
 //! [SmartString]: struct.SmartString.html
 //! [Prefixed]: struct.Prefixed.html
+//! [LazyCompact]: struct.LazyCompact.html
 //! [Compact]: struct.Compact.html
 //! [IntoString]: struct.SmartString.html#impl-Into%3CString%3E
 //! [FRAGMENT_SIZE]: constant.FRAGMENT_SIZE.html
@@ -136,7 +145,7 @@ use std::{
 };
 
 mod config;
-pub use config::{Compact, Prefixed, SmartStringMode, FRAGMENT_SIZE};
+pub use config::{Compact, LazyCompact, Prefixed, SmartStringMode, FRAGMENT_SIZE};
 
 mod marker_byte;
 use marker_byte::{Discriminant, Marker};
@@ -157,19 +166,25 @@ pub use iter::Drain;
 pub mod alias {
     use super::*;
 
-    /// A convenience alias for a [`Compact`][Compact] layout [`SmartString`][SmartString].
+    /// A convenience alias for a [`LazyCompact`][LazyCompact] layout [`SmartString`][SmartString].
     ///
     /// Just pretend it's a [`String`][String]!
     ///
     /// [SmartString]: struct.SmartString.html
-    /// [Compact]: struct.Compact.html
+    /// [LazyCompact]: struct.LazyCompact.html
     pub type String = SmartString<Compact>;
+
+    /// A convenience alias for a [`Compact`][Compact] layout [`SmartString`][SmartString].
+    ///
+    /// [SmartString]: struct.SmartString.html
+    /// [Compact]: struct.Compact.html
+    pub type CompactString = SmartString<Compact>;
 
     /// A convenience alias for a [`Prefixed`][Prefixed] layout [`SmartString`][SmartString].
     ///
     /// [SmartString]: struct.SmartString.html
     /// [Prefixed]: struct.Prefixed.html
-    pub type BigString = SmartString<Prefixed>;
+    pub type PrefixedString = SmartString<Prefixed>;
 }
 
 /// A smart string.
@@ -308,20 +323,24 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     ///
     /// Returns the resulting state: `true` if it's inlined, `false` if it's not.
     fn try_demote(&mut self) -> bool {
-        if let StringCastMut::Boxed(string) = self.cast_mut() {
-            if string.len() > Mode::MAX_INLINE {
-                false
-            } else {
-                let inlined = string.string().as_bytes().into();
-                unsafe {
-                    drop_in_place(string);
-                    let data = &mut self.data.as_mut_ptr();
-                    data.write(inlined);
+        if Mode::DEALLOC {
+            if let StringCastMut::Boxed(string) = self.cast_mut() {
+                if string.len() > Mode::MAX_INLINE {
+                    false
+                } else {
+                    let inlined = string.string().as_bytes().into();
+                    unsafe {
+                        drop_in_place(string);
+                        let data = &mut self.data.as_mut_ptr();
+                        data.write(inlined);
+                    }
+                    true
                 }
+            } else {
                 true
             }
         } else {
-            true
+            false
         }
     }
 

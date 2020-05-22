@@ -16,7 +16,7 @@ use std::mem::{align_of, size_of};
 /// [Prefixed]: struct.Prefixed.html
 pub const FRAGMENT_SIZE: usize = align_of::<String>() - 1;
 
-/// A compact string representation equal to [`String`][String] in size.
+/// A compact string representation equal to [`String`][String] in size with guaranteed inlining.
 ///
 /// This representation relies on pointer alignment to be able to store a discriminant bit in its
 /// inline form that will never be present in its [`String`][String] form, thus
@@ -33,6 +33,22 @@ pub const FRAGMENT_SIZE: usize = align_of::<String>() - 1;
 /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
 #[derive(Debug)]
 pub struct Compact;
+
+/// A representation similar to [`Compact`][Compact] but which doesn't re-inline strings.
+///
+/// This is a variant of [`Compact`][Compact] which doesn't aggressively inline strings.
+/// Where [`Compact`][Compact] automatically turns a heap allocated string back into an
+/// inlined string if it should become short enough, [`LazyCompact`][LazyCompact] keeps
+/// it heap allocated once heap allocation has occurred. If your aim is to defer heap
+/// allocation as much as possible, rather than to ensure cache locality, this is the
+/// variant you want - it won't allocate until the inline capacity is exceeded, and it
+/// also won't deallocate once allocation has occurred, which risks reallocation if the
+/// string exceeds its inline capacity in the future.
+///
+/// [Compact]: struct.Compact.html
+/// [String]: https://doc.rust-lang.org/std/string/struct.String.html
+#[derive(Debug)]
+pub struct LazyCompact;
 
 /// A string representation that always keeps an inline prefix.
 ///
@@ -76,10 +92,11 @@ pub struct Prefixed;
 
 /// Marker trait for [`SmartString`][SmartString] representations.
 ///
-/// See [`Compact`][Compact] and [`Prefixed`][Prefixed].
+/// See [`LazyCompact`][LazyCompact], [`Compact`][Compact] and [`Prefixed`][Prefixed].
 ///
 /// [SmartString]: struct.SmartString.html
 /// [Compact]: struct.Compact.html
+/// [LazyCompact]: struct.LazyCompact.html
 /// [Prefixed]: struct.Prefixed.html
 pub trait SmartStringMode {
     /// The boxed string type for this layout.
@@ -93,6 +110,10 @@ pub trait SmartStringMode {
     ///
     /// [Prefixed]: struct.Prefixed.html
     const PREFIXED: bool;
+    /// A constant to decide whether to turn a wrapped string back into an inlined
+    /// string whenever possible (`true`) or leave it as a wrapped string once wrapping
+    /// has occurred (`false`).
+    const DEALLOC: bool;
 }
 
 impl SmartStringMode for Compact {
@@ -100,6 +121,15 @@ impl SmartStringMode for Compact {
     type InlineArray = [u8; size_of::<String>() - 1];
     const MAX_INLINE: usize = size_of::<String>() - 1;
     const PREFIXED: bool = false;
+    const DEALLOC: bool = true;
+}
+
+impl SmartStringMode for LazyCompact {
+    type BoxedString = String;
+    type InlineArray = [u8; size_of::<String>() - 1];
+    const MAX_INLINE: usize = size_of::<String>() - 1;
+    const PREFIXED: bool = false;
+    const DEALLOC: bool = false;
 }
 
 impl SmartStringMode for Prefixed {
@@ -107,6 +137,7 @@ impl SmartStringMode for Prefixed {
     type InlineArray = [u8; size_of::<FragmentString>() - 1];
     const MAX_INLINE: usize = size_of::<FragmentString>() - 1;
     const PREFIXED: bool = true;
+    const DEALLOC: bool = true;
 }
 
 // Assert that we're not using more space than we can encode in the header byte,

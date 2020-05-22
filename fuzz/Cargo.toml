@@ -29,6 +29,10 @@ name = "ordering_compact"
 path = "fuzz_targets/ordering_compact.rs"
 
 [[bin]]
+name = "smartstring_lazycompact"
+path = "fuzz_targets/smartstring_compact.rs"
+
+[[bin]]
 name = "smartstring_prefixed"
 path = "fuzz_targets/smartstring_prefixed.rs"
 
