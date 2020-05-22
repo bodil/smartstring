@@ -3,7 +3,6 @@ use std::{
     fmt::{Debug, Error, Formatter},
     iter::FusedIterator,
     ops::RangeBounds,
-    ptr::drop_in_place,
     str::Chars,
     string::Drain as StringDrain,
 };
@@ -21,7 +20,7 @@ where
 {
     Boxed {
         string: *mut SmartString<Mode>,
-        iter: StringDrain<'a>,
+        iter: Option<StringDrain<'a>>,
     },
     Inline {
         string: *mut InlineString<Mode>,
@@ -43,7 +42,7 @@ where
         Drain(match string.cast_mut() {
             crate::casts::StringCastMut::Boxed(boxed) => DrainCast::Boxed {
                 string: string_ptr,
-                iter: boxed.string_mut().drain(range),
+                iter: Some(boxed.string_mut().drain(range)),
             },
             crate::casts::StringCastMut::Inline(inline) => {
                 let len = inline.len();
@@ -71,7 +70,7 @@ where
                 string,
                 ref mut iter,
             } => unsafe {
-                drop_in_place(iter);
+                iter.take();
                 (*string).try_demote();
             },
             DrainCast::Inline {
@@ -92,7 +91,10 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.0 {
-            DrainCast::Boxed { iter, .. } => iter.next(),
+            DrainCast::Boxed {
+                iter: Some(iter), ..
+            } => iter.next(),
+            DrainCast::Boxed { iter: None, .. } => unreachable!(),
             DrainCast::Inline { iter, .. } => iter.next(),
         }
     }
@@ -100,7 +102,10 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         match &self.0 {
-            DrainCast::Boxed { iter, .. } => iter.size_hint(),
+            DrainCast::Boxed {
+                iter: Some(iter), ..
+            } => iter.size_hint(),
+            DrainCast::Boxed { iter: None, .. } => unreachable!(),
             DrainCast::Inline { iter, .. } => iter.size_hint(),
         }
     }
@@ -108,7 +113,10 @@ where
     #[inline]
     fn last(mut self) -> Option<Self::Item> {
         match &mut self.0 {
-            DrainCast::Boxed { iter, .. } => iter.next_back(),
+            DrainCast::Boxed {
+                iter: Some(iter), ..
+            } => iter.next_back(),
+            DrainCast::Boxed { iter: None, .. } => unreachable!(),
             DrainCast::Inline { iter, .. } => iter.next_back(),
         }
     }
@@ -121,7 +129,10 @@ where
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         match &mut self.0 {
-            DrainCast::Boxed { iter, .. } => iter.next_back(),
+            DrainCast::Boxed {
+                iter: Some(iter), ..
+            } => iter.next_back(),
+            DrainCast::Boxed { iter: None, .. } => unreachable!(),
             DrainCast::Inline { iter, .. } => iter.next_back(),
         }
     }

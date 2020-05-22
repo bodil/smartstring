@@ -340,8 +340,8 @@ impl Action {
 }
 
 fn assert_invariants<Mode: SmartStringMode>(control: &str, subject: &SmartString<Mode>) {
-    assert_eq!(control, subject.as_str());
     assert_eq!(control.len(), subject.len());
+    assert_eq!(control, subject.as_str());
     assert_eq!(
         subject.is_inline(),
         subject.len() <= Mode::MAX_INLINE,
@@ -374,7 +374,8 @@ pub fn test_ordering<Mode: SmartStringMode>(left: String, right: String) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Action::*, Constructor::*, TestBounds::*, *};
+
     use crate::{Compact, Prefixed};
 
     proptest! {
@@ -478,6 +479,22 @@ mod tests {
         test_everything::<Compact>(
             Constructor::FromString("\'\'\'\'\'[[[[[[[[[[[-[[[[[[[[[[[[[[[[[[[[[[".to_string()),
             vec![Action::Slice(TestBounds::Inclusive(1, 0))],
+        )
+    }
+
+    #[test]
+    fn drain_over_inline_boundary() {
+        test_everything::<Compact>(
+            FromString((0..24).map(|_| 'x').collect()),
+            vec![Drain(Range(0, 1))],
+        )
+    }
+
+    #[test]
+    fn drain_wrapped_shouldnt_drop_twice() {
+        test_everything::<Compact>(
+            FromString((0..25).map(|_| 'x').collect()),
+            vec![Drain(Range(0, 1))],
         )
     }
 }
