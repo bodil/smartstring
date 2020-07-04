@@ -142,7 +142,7 @@ pub mod alias {
     ///
     /// [SmartString]: struct.SmartString.html
     /// [LazyCompact]: struct.LazyCompact.html
-    pub type String = SmartString<Compact>;
+    pub type String = SmartString<LazyCompact>;
 
     /// A convenience alias for a [`Compact`][Compact] layout [`SmartString`][SmartString].
     ///
