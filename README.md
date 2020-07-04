@@ -16,10 +16,6 @@ when not inlined it's pointer compatible with `String`, meaning that you can saf
 if it had never been a `SmartString`. (But please don't do that, there's an `Into<String>`
 implementation that's much safer.)
 
-There's also a more memory hungry variant which keeps a copy of the first few bytes of the string on
-the stack even when it's heap allocated, for cases where it can be useful to do a quick cache local
-comparison between two strings to immediately eliminate equality.
-
 ## Documentation
 
 -   [API docs](https://docs.rs/smartstring)
