@@ -9,7 +9,7 @@ repository = "https://github.com/bodil/smartstring"
 documentation = "http://docs.rs/smartstring"
 readme = "./README.md"
 categories = ["data-structures"]
-keywords = ["cache-local", "cpu-cache", "small-string", "inline-string"]
+keywords = ["cache-local", "cpu-cache", "small-string", "sso", "inline-string"]
 exclude = ["release.toml", "proptest-regressions/**"]
 
 [[bench]]
