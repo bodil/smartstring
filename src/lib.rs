@@ -415,7 +415,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Truncate the string to `new_len` bytes.
     ///
     /// If `new_len` is larger than the string's current length, this does nothing.
-    /// If `new_len` isn't on an UTF-8 character boundary, this method panics.
+    /// If `new_len` isn't on a UTF-8 character boundary, this method panics.
     pub fn truncate(&mut self, new_len: usize) {
         match self.cast_mut() {
             StringCastMut::Boxed(string) => string.string_mut().truncate(new_len),
