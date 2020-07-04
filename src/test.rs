@@ -378,7 +378,7 @@ pub fn test_ordering<Mode: SmartStringMode>(left: String, right: String) {
 mod tests {
     use super::{Action::*, Constructor::*, TestBounds::*, *};
 
-    use crate::{Compact, LazyCompact, Prefixed};
+    use crate::{Compact, LazyCompact};
 
     proptest! {
         #[test]
@@ -392,11 +392,6 @@ mod tests {
         }
 
         #[test]
-        fn proptest_everything_prefixed(constructor: Constructor, actions: Vec<Action>) {
-            test_everything::<Prefixed>(constructor, actions);
-        }
-
-        #[test]
         fn proptest_ordering_compact(left: String, right: String) {
             test_ordering::<Compact>(left,right)
         }
@@ -405,16 +400,11 @@ mod tests {
         fn proptest_ordering_lazycompact(left: String, right: String) {
             test_ordering::<LazyCompact>(left,right)
         }
-
-        #[test]
-        fn proptest_ordering_prefixed(left: String, right: String) {
-            test_ordering::<Prefixed>(left,right)
-        }
     }
 
     #[test]
     fn must_panic_on_insert_outside_char_boundary() {
-        test_everything::<Prefixed>(
+        test_everything::<Compact>(
             Constructor::FromString("a0 A୦a\u{2de0}0 🌀Aa".to_string()),
             vec![
                 Action::Push(' '),
@@ -433,7 +423,7 @@ mod tests {
 
     #[test]
     fn must_panic_on_out_of_bounds_range() {
-        test_everything::<Prefixed>(
+        test_everything::<Compact>(
             Constructor::New,
             vec![Action::Slice(TestBounds::Range(0, 13764126361151078400))],
         );
@@ -441,7 +431,7 @@ mod tests {
 
     #[test]
     fn must_not_promote_before_insert_succeeds() {
-        test_everything::<Prefixed>(
+        test_everything::<Compact>(
             Constructor::FromString("ኲΣ A𑒀a ®Σ a0🠀  aA®A".to_string()),
             vec![Action::Insert(21, ' ')],
         );
@@ -449,16 +439,10 @@ mod tests {
 
     #[test]
     fn must_panic_on_slice_outside_char_boundary() {
-        test_everything::<Prefixed>(
+        test_everything::<Compact>(
             Constructor::New,
             vec![Action::Push('Ь'), Action::Slice(TestBounds::ToInclusive(0))],
         )
-    }
-
-    #[test]
-    fn must_compare_correctly_with_different_fragment_char_counts() {
-        test_ordering::<Prefixed>("\u{1b}\u{7be}\nJ\\#\u{7be}J\\\no\u{7be}\n\n[\n\u{2}\n\n\u{11}C\u{0}\u{0}\u{0}A\n\n[\n\u{2}\n\n\u{11}C\u{0}A\n\u{1a}\n\u{7be}JC\u{11}\u{10}C\u{0}[\u{2}\u{1b}\u{7be}\nJ\\XX".to_string(),
-            "\u{1b}\u{7be}\nJ\\\u{7be}\n\n[\n\u{2}\n\n\u{11}C\u{0}\u{0}\u{0}A\n\n[\n\u{2}\n\n\u{11}C\u{0}A\n\u{1a}\n\u{7be}JC\u{11}\u{10}C\u{0}[\u{2}\u{1b}\u{7be}\nJ\\XX\u{1b}\u{7be}\nJ\\#\u{7be}J\\\no\u{7be}\n\n[\n\u{2}\n\n\u{11}C\u{0}\u{0}\u{0}A\n\n[\n\u{2}\n\n\u{11}C\u{0}A\n\u{1a}\n\u{7be}JC\u{11}\u{10}C\u{0}[\u{2}\u{1b}\u{7be}\nJ\\XXXXXXXXX\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}\u{1f}XXXXXXXXXXXXXXXXXXXXXXXXX".to_string());
     }
 
     #[test]
@@ -467,21 +451,9 @@ mod tests {
         test_everything::<Compact>(Constructor::New, vec![Action::InsertStr(0, string)])
     }
 
-    // #[test]
-    // fn drain_a_string_properly() {
-    //     test_everything::<Compact>(
-    //         Constructor::New,
-    //         vec![Action::Push('¡'), Action::Drain(TestBounds::Full)],
-    //     )
-    // }
-
     #[test]
     #[should_panic]
     fn drain_bounds_integer_overflow_must_panic() {
-        // test_everything::<Compact>(
-        //     Constructor::FromString("מ∢∢∢∢∢∢∢∢".to_string()),
-        //     vec![Action::Drain(TestBounds::ToInclusive(usize::max_value()))],
-        // )
         let mut string = SmartString::<Compact>::from("מ");
         string.drain(..=usize::max_value());
     }
@@ -508,5 +480,17 @@ mod tests {
             FromString((0..25).map(|_| 'x').collect()),
             vec![Drain(Range(0, 1))],
         )
+    }
+
+    #[test]
+    fn fail() {
+        let value = "fo\u{0}\u{0}\u{0}\u{8}\u{0}\u{0}\u{0}\u{0}____bbbbb_____bbbbbbbbb";
+        let mut control = String::from(value);
+        let mut string = SmartString::<Compact>::from(value);
+        control.drain(..=0);
+        string.drain(..=0);
+        let control_smart: SmartString<Compact> = control.into();
+        assert_eq!(control_smart, string);
+        assert_eq!(Ordering::Equal, string.cmp(&control_smart));
     }
 }

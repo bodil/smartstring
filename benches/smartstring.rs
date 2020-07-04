@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rand::{distributions::Standard, Rng, SeedableRng};
-use smartstring::{Compact, Prefixed, SmartString, SmartStringMode};
+use smartstring::{Compact, LazyCompact, SmartString, SmartStringMode};
 use std::collections::BTreeSet;
 
 const SIZES: &[usize] = &[4096, 16384, 32768, 65536, 131072];
@@ -71,7 +71,7 @@ fn lookup_random(key_size: usize, c: &mut Criterion) {
         let (smartc_indices, smartc_set) =
             make_smart_input::<Compact>(&string_indices, &string_set);
         let (smartp_indices, smartp_set) =
-            make_smart_input::<Prefixed>(&string_indices, &string_set);
+            make_smart_input::<LazyCompact>(&string_indices, &string_set);
 
         group.bench_function(BenchmarkId::new("String", size), |b| {
             b.iter(|| {
@@ -89,7 +89,7 @@ fn lookup_random(key_size: usize, c: &mut Criterion) {
             })
         });
 
-        group.bench_function(BenchmarkId::new("SmartString<Prefixed>", size), |b| {
+        group.bench_function(BenchmarkId::new("SmartString<LazyCompact>", size), |b| {
             b.iter(|| {
                 for k in &smartp_indices {
                     black_box(smartp_set.contains(k));

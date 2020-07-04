@@ -5,14 +5,12 @@
 //! # Smart String
 //!
 //! [`SmartString`][SmartString] is a wrapper around [`String`][String] which offers
-//! automatic inlining of small strings, as well as, optionally, improved cache locality
-//! for comparisons between larger strings. It comes in three flavours:
+//! automatic inlining of small strings. It comes in two flavours:
 //! [`LazyCompact`][LazyCompact], which takes up exactly as much space as a [`String`][String]
-//! and is generally a little faster; [`Compact`][Compact], which is the same as
+//! and is generally a little faster, and [`Compact`][Compact], which is the same as
 //! [`LazyCompact`][LazyCompact] except it will aggressively re-inline any expanded
-//! [`String`][String]s which become short enough to do so; and [`Prefixed`][Prefixed],
-//! which is usually slower but can be much faster at string comparisons if your strings
-//! tend to have a certain shape. [`LazyCompact`][LazyCompact] is the default.
+//! [`String`][String]s which become short enough to do so.
+//! [`LazyCompact`][LazyCompact] is the default.
 //!
 //! ## What Is It For?
 //!
@@ -43,7 +41,7 @@
 //!
 //! ## Give Me The Details
 //!
-//! The [`Compact`][Compact] variant is the same size as [`String`][String] and
+//! [`SmartString`][SmartString] is the same size as [`String`][String] and
 //! relies on pointer alignment to be able to store a discriminant bit in its
 //! inline form that will never be present in its [`String`][String] form, thus
 //! giving us 24 bytes (on 64-bit architectures) minus one bit to encode our
@@ -62,26 +60,6 @@
 //! implementation that does the exact same thing with no need to go unsafe
 //! in your own code.)
 //!
-//! [`LazyCompact`][LazyCompact] looks the same as [`Compact`][Compact], except
-//! it never re-inlines a string that's already been heap allocated, instead
-//! keeping the allocation around in case it needs it. This makes for less
-//! cache local strings, but is the best choice if you're more worried about
-//! time spent on unnecessary allocations than cache locality.
-//!
-//! The [`Prefixed`][Prefixed] variant stores strings as one [`String`][String]
-//! preceded by up to the first
-//! [`FRAGMENT_SIZE`][FRAGMENT_SIZE] bytes of its content plus one byte
-//! to store the size of the fragment plus the discriminant bit. [`FRAGMENT_SIZE`][FRAGMENT_SIZE] is
-//! calculated to be the size of the padding between the size byte and the
-//! [`String`][String], which would generally be 7 bytes on 64-bit systems.
-//! This lets us quickly check for ordering or equality in a cache local
-//! context if it can be determined by looking at the first couple of
-//! bytes of the string, which is very often the case.
-//!
-//! Given that the [`Prefixed`][Prefixed] variant stores [`String`][String]s
-//! with this extra data, its inline variant has room for 31 bytes (once again, on
-//! 64-bit architectures).
-//!
 //! It is aggressive about inlining strings, meaning that if you modify a heap allocated
 //! string such that it becomes short enough for inlining, it will be inlined immediately
 //! and the allocated [`String`][String] will be dropped. This may cause multiple
@@ -89,6 +67,12 @@
 //! inline capacity threshold, so if your string's construction can get
 //! complicated and you're relying on performance during construction, it might be better
 //! to construct it as a [`String`][String] and convert it once construction is done.
+//!
+//! [`LazyCompact`][LazyCompact] looks the same as [`Compact`][Compact], except
+//! it never re-inlines a string that's already been heap allocated, instead
+//! keeping the allocation around in case it needs it. This makes for less
+//! cache local strings, but is the best choice if you're more worried about
+//! time spent on unnecessary allocations than cache locality.
 //!
 //! ## Performance
 //!
@@ -99,24 +83,10 @@
 //! memory efficient in these cases. There will always be a slight overhead on all
 //! operations on boxed strings, compared to [`String`][String].
 //!
-//! You can assume that the [`Prefixed`][Prefixed] variant will be more efficient
-//! than [`String`][String] when comparing strings in an array, given keys that tend
-//! to differ inside the first couple of bytes. If your strings tend to have identical
-//! prefixes, any benefits you'd otherwise gain from the cache locality of the stored
-//! prefix would be lost, and the slight added complexity of [`SmartString`][SmartString]'s
-//! prefix search would be a problem. However, it's safe to assume that if you're comparing inlined
-//! [`SmartString`][SmartString]s, they'll always beat [`String`][String].
-//!
-//! Please do also keep in mind that [`Prefixed`][Prefixed] strings are slightly larger
-//! than plain [`String`][String]s, which may have an impact on cache locality if you don't
-//! plan for it, and certainly on how many strings will fit into a cache line at the same time.
-//!
 //! [SmartString]: struct.SmartString.html
-//! [Prefixed]: struct.Prefixed.html
 //! [LazyCompact]: struct.LazyCompact.html
 //! [Compact]: struct.Compact.html
 //! [IntoString]: struct.SmartString.html#impl-Into%3CString%3E
-//! [FRAGMENT_SIZE]: constant.FRAGMENT_SIZE.html
 //! [String]: https://doc.rust-lang.org/std/string/struct.String.html
 //! [BTreeMap]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [eq]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html#tymethod.eq
@@ -145,7 +115,7 @@ use std::{
 };
 
 mod config;
-pub use config::{Compact, LazyCompact, Prefixed, SmartStringMode, FRAGMENT_SIZE};
+pub use config::{Compact, LazyCompact, SmartStringMode};
 
 mod marker_byte;
 use marker_byte::{Discriminant, Marker};
@@ -179,12 +149,6 @@ pub mod alias {
     /// [SmartString]: struct.SmartString.html
     /// [Compact]: struct.Compact.html
     pub type CompactString = SmartString<Compact>;
-
-    /// A convenience alias for a [`Prefixed`][Prefixed] layout [`SmartString`][SmartString].
-    ///
-    /// [SmartString]: struct.SmartString.html
-    /// [Prefixed]: struct.Prefixed.html
-    pub type PrefixedString = SmartString<Prefixed>;
 }
 
 /// A smart string.
@@ -192,7 +156,7 @@ pub mod alias {
 /// This wraps one of two string types: an inline string or a boxed string.
 /// Conversion between the two happens opportunistically and transparently.
 ///
-/// It takes a layout as its type argument: one of [`Compact`][Compact] or [`Prefixed`][Prefixed].
+/// It takes a layout as its type argument: one of [`Compact`][Compact] or [`LazyCompact`][LazyCompact].
 ///
 /// It mimics the interface of [`String`][String] except where behaviour cannot
 /// be guaranteed to stay consistent between its boxed and inline states. This means
@@ -206,7 +170,7 @@ pub mod alias {
 ///
 /// [SmartString]: struct.SmartString.html
 /// [Compact]: struct.Compact.html
-/// [Prefixed]: struct.Prefixed.html
+/// [LazyCompact]: struct.LazyCompact.html
 /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
 #[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
@@ -217,14 +181,19 @@ pub struct SmartString<Mode: SmartStringMode> {
 impl<Mode: SmartStringMode> Drop for SmartString<Mode> {
     fn drop(&mut self) {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
-            unsafe {
-                drop_in_place(string);
-            }
+            unsafe { drop_in_place(string) };
         }
     }
 }
 
 impl<Mode: SmartStringMode> Clone for SmartString<Mode> {
+    /// Clone a `SmartString`.
+    ///
+    /// If the string is inlined, this is a [`Copy`][Copy] operation. Otherwise,
+    /// [`String::clone()`][String::clone] is invoked.
+    ///
+    /// [String::clone]: https://doc.rust-lang.org/std/string/struct.String.html#impl-Clone
+    /// [Copy]: https://doc.rust-lang.org/std/marker/trait.Copy.html
     fn clone(&self) -> Self {
         match self.cast() {
             StringCast::Boxed(string) => Self::from_boxed(string.string().clone().into()),
@@ -482,9 +451,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         let result = match self.cast_mut() {
             StringCastMut::Boxed(string) => {
                 let result = string.string_mut().remove(index);
-                if index < FRAGMENT_SIZE {
-                    string.update_fragment();
-                }
                 result
             }
             StringCastMut::Inline(string) => {
@@ -513,9 +479,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         match self.cast_mut() {
             StringCastMut::Boxed(string) => {
                 string.string_mut().insert(index, ch);
-                if index < FRAGMENT_SIZE {
-                    string.update_fragment();
-                }
             }
             StringCastMut::Inline(string) if string.len() + ch.len_utf8() <= Mode::MAX_INLINE => {
                 let mut buffer = [0; 4];
@@ -537,9 +500,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         match self.cast_mut() {
             StringCastMut::Boxed(this) => {
                 this.string_mut().insert_str(index, string);
-                if index < FRAGMENT_SIZE {
-                    this.update_fragment();
-                }
             }
             StringCastMut::Inline(this) if this.len() + string.len() <= Mode::MAX_INLINE => {
                 this.insert_bytes(index, string.as_bytes());
@@ -588,7 +548,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         match self.cast_mut() {
             StringCastMut::Boxed(string) => {
                 string.string_mut().retain(f);
-                string.update_fragment();
             }
             StringCastMut::Inline(string) => {
                 let len = string.len();
@@ -642,7 +601,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         match self.cast_mut() {
             StringCastMut::Boxed(string) => {
                 string.string_mut().replace_range(range, replace_with);
-                string.update_fragment();
             }
             StringCastMut::Inline(string) => {
                 let len = string.len();
@@ -1017,14 +975,7 @@ impl<Mode: SmartStringMode> ToString for SmartString<Mode> {
 
 impl<Mode: SmartStringMode> PartialEq<str> for SmartString<Mode> {
     fn eq(&self, other: &str) -> bool {
-        if Mode::PREFIXED {
-            match self.cast() {
-                StringCast::Boxed(string) => string.eq_with_str(other),
-                StringCast::Inline(string) => string.as_str() == other,
-            }
-        } else {
-            self.as_str() == other
-        }
+        self.as_str() == other
     }
 }
 
@@ -1054,18 +1005,7 @@ impl<Mode: SmartStringMode> PartialEq<SmartString<Mode>> for String {
 
 impl<Mode: SmartStringMode> PartialEq for SmartString<Mode> {
     fn eq(&self, other: &Self) -> bool {
-        if Mode::PREFIXED {
-            match (self.cast(), other.cast()) {
-                (StringCast::Boxed(left), StringCast::Boxed(right)) => left.eq_with_self(right),
-                (StringCast::Boxed(left), StringCast::Inline(right))
-                | (StringCast::Inline(right), StringCast::Boxed(left)) => {
-                    left.eq_with_str(right.as_str())
-                }
-                _ => self.as_str() == other.as_str(),
-            }
-        } else {
-            self.as_str() == other.as_str()
-        }
+        self.as_str() == other.as_str()
     }
 }
 
@@ -1073,54 +1013,19 @@ impl<Mode: SmartStringMode> Eq for SmartString<Mode> {}
 
 impl<Mode: SmartStringMode> PartialOrd<str> for SmartString<Mode> {
     fn partial_cmp(&self, other: &str) -> Option<Ordering> {
-        if Mode::PREFIXED {
-            match self.cast() {
-                StringCast::Boxed(string) => Some(string.cmp_with_str(other)),
-                StringCast::Inline(string) => string.as_str().partial_cmp(other),
-            }
-        } else {
-            self.as_str().partial_cmp(other)
-        }
+        self.as_str().partial_cmp(other)
     }
 }
 
 impl<Mode: SmartStringMode> PartialOrd for SmartString<Mode> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if Mode::PREFIXED {
-            match (self.cast(), other.cast()) {
-                (StringCast::Boxed(left), StringCast::Boxed(right)) => {
-                    Some(left.cmp_with_self(right))
-                }
-                (StringCast::Boxed(left), StringCast::Inline(right)) => {
-                    Some(left.cmp_with_str(right.as_str()))
-                }
-                (StringCast::Inline(left), StringCast::Boxed(right)) => {
-                    Some(right.cmp_with_str(left.as_str()).reverse())
-                }
-                _ => self.partial_cmp(other.as_str()),
-            }
-        } else {
-            self.partial_cmp(other.as_str())
-        }
+        self.partial_cmp(other.as_str())
     }
 }
 
 impl<Mode: SmartStringMode> Ord for SmartString<Mode> {
     fn cmp(&self, other: &Self) -> Ordering {
-        if Mode::PREFIXED {
-            match (self.cast(), other.cast()) {
-                (StringCast::Boxed(left), StringCast::Boxed(right)) => left.cmp_with_self(right),
-                (StringCast::Boxed(left), StringCast::Inline(right)) => {
-                    left.cmp_with_str(right.as_str())
-                }
-                (StringCast::Inline(left), StringCast::Boxed(right)) => {
-                    right.cmp_with_str(left.as_str()).reverse()
-                }
-                _ => self.as_str().cmp(other.as_str()),
-            }
-        } else {
-            self.as_str().cmp(other.as_str())
-        }
+        self.as_str().cmp(other.as_str())
     }
 }
 

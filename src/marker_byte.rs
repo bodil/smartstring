@@ -52,11 +52,6 @@ impl Marker {
         Self(Self::assemble(Discriminant::Inline, data))
     }
 
-    pub(crate) fn new_boxed(data: u8) -> Self {
-        debug_assert!(data < 0x80);
-        Self(Self::assemble(Discriminant::Boxed, data))
-    }
-
     #[inline(always)]
     pub(crate) fn discriminant(self) -> Discriminant {
         Discriminant::from_bit(if UPSIDE_DOWN_LAND {
