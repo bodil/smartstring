@@ -293,23 +293,28 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Returns the resulting state: `true` if it's inlined, `false` if it's not.
     fn try_demote(&mut self) -> bool {
         if Mode::DEALLOC {
-            if let StringCastMut::Boxed(string) = self.cast_mut() {
-                if string.len() > Mode::MAX_INLINE {
-                    false
-                } else {
-                    let inlined = string.string().as_bytes().into();
-                    unsafe {
-                        drop_in_place(string);
-                        let data = &mut self.data.as_mut_ptr();
-                        data.write(inlined);
-                    }
-                    true
-                }
+            self.really_try_demote()
+        } else {
+            false
+        }
+    }
+
+    /// Attempt to inline the string regardless of whether `Mode::DEALLOC` is set.
+    fn really_try_demote(&mut self) -> bool {
+        if let StringCastMut::Boxed(string) = self.cast_mut() {
+            if string.len() > Mode::MAX_INLINE {
+                false
             } else {
+                let inlined = string.string().as_bytes().into();
+                unsafe {
+                    drop_in_place(string);
+                    let data = &mut self.data.as_mut_ptr();
+                    data.write(inlined);
+                }
                 true
             }
         } else {
-            false
+            true
         }
     }
 
@@ -404,12 +409,19 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Thus, it's not safe to assume that [`capacity()`][capacity] will
     /// equal [`len()`][len] after calling this.
     ///
+    /// Calling this on a [`LazyCompact`][LazyCompact] string that is currently
+    /// heap allocated but is short enough to be inlined will deallocate the
+    /// heap allocation and convert it to an inline string.
+    ///
     /// [capacity]: struct.SmartString.html#method.capacity
     /// [len]: struct.SmartString.html#method.len
     pub fn shrink_to_fit(&mut self) {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
-            string.string_mut().shrink_to_fit();
+            if string.len() > Mode::MAX_INLINE {
+                string.string_mut().shrink_to_fit();
+            }
         }
+        self.really_try_demote();
     }
 
     /// Truncate the string to `new_len` bytes.
