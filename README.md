@@ -22,6 +22,10 @@ when not inlined it's pointer compatible with `String`, meaning that you can saf
 if it had never been a `SmartString`. (But please don't do that, there's an `Into<String>`
 implementation that's much safer.)
 
+## Serialization
+
+Serde support is optional and can be enabled with the `serde` feature.
+
 ## Documentation
 
 -   [API docs](https://docs.rs/smartstring)
