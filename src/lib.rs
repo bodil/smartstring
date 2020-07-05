@@ -461,10 +461,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// If the index doesn't fall on a UTF-8 character boundary, this method panics.
     pub fn remove(&mut self, index: usize) -> char {
         let result = match self.cast_mut() {
-            StringCastMut::Boxed(string) => {
-                let result = string.string_mut().remove(index);
-                result
-            }
+            StringCastMut::Boxed(string) => string.string_mut().remove(index),
             StringCastMut::Inline(string) => {
                 let ch = match string.as_str()[index..].chars().next() {
                     Some(ch) => ch,
