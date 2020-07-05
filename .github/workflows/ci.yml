@@ -100,4 +100,4 @@ jobs:
             - name: Run Miri
               run: |
                   cargo miri setup
-                  cargo miri test -- -Zmiri-disable-isolation -- --skip proptest
+                  cargo miri test -- -Zmiri-disable-isolation -- --skip proptest --skip ser_de
