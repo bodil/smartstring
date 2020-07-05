@@ -494,6 +494,7 @@ mod tests {
         assert_eq!(Ordering::Equal, string.cmp(&control_smart));
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn test_ser_de() {
         use serde_test::{assert_tokens, Token};
