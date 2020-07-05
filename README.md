@@ -2,6 +2,12 @@
 
 Compact inlined strings.
 
+## tl;dr
+
+String type that's source compatible with `std::string::String`, uses exactly the same amount of
+space, doesn't heap allocate for short strings (up to 23 bytes on 64-bit archs) by storing them
+in the space a `String` would have taken up on the stack, making strings go faster overall.
+
 ## Overview
 
 This crate provides a wrapper for Rust's standard `String` which uses the space a `String` occupies
