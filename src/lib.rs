@@ -83,6 +83,9 @@
 //! memory efficient in these cases. There will always be a slight overhead on all
 //! operations on boxed strings, compared to [`String`][String].
 //!
+//! ## Serialization
+//! [Serde][serde] support is optional and can be enabled with the `serde` feature.
+//!
 //! [SmartString]: struct.SmartString.html
 //! [LazyCompact]: struct.LazyCompact.html
 //! [Compact]: struct.Compact.html
@@ -93,6 +96,7 @@
 //! [cmp]: https://doc.rust-lang.org/std/cmp/trait.Ord.html#tymethod.cmp
 //! [transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
 //! [tinystr]: https://crates.io/crates/tinystr
+//! [serde]: https://crates.io/crates/serde
 
 #![forbid(rust_2018_idioms)]
 #![deny(nonstandard_style)]
@@ -131,6 +135,9 @@ use casts::{StringCast, StringCastInto, StringCastMut};
 
 mod iter;
 pub use iter::Drain;
+
+#[cfg(feature = "serde")]
+mod serde;
 
 /// Convenient type aliases.
 pub mod alias {
