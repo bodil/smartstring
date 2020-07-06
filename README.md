@@ -5,8 +5,8 @@ Compact inlined strings.
 ## tl;dr
 
 String type that's source compatible with `std::string::String`, uses exactly the same amount of
-space, doesn't heap allocate for short strings (up to 23 bytes on 64-bit archs) by storing them
-in the space a `String` would have taken up on the stack, making strings go faster overall.
+space, doesn't heap allocate for short strings (up to 23 bytes on 64-bit archs) by storing them in
+the space a `String` would have taken up on the stack, making strings go faster overall.
 
 ## Overview
 
@@ -21,10 +21,6 @@ when not inlined it's pointer compatible with `String`, meaning that you can saf
 `SmartString` to a `String` using `std::mem::replace()` or `pointer::cast()` and go on using it as
 if it had never been a `SmartString`. (But please don't do that, there's an `Into<String>`
 implementation that's much safer.)
-
-## Serialization
-
-Serde support is optional and can be enabled with the `serde` feature.
 
 ## Documentation
 

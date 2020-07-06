@@ -83,8 +83,19 @@
 //! memory efficient in these cases. There will always be a slight overhead on all
 //! operations on boxed strings, compared to [`String`][String].
 //!
-//! ## Serialization
-//! [Serde][serde] support is optional and can be enabled with the `serde` feature.
+//! ## Feature Flags
+//!
+//! `smartstring` comes with optional support for the following crates through Cargo
+//! feature flags. You can enable them in your `Cargo.toml` file like this:
+//!
+//! ```no_compile
+//! [dependencies]
+//! smartstring = { version = "*", features = ["serde"] }
+//! ```
+//!
+//! | Feature | Description |
+//! | ------- | ----------- |
+//! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`][SmartString] |
 //!
 //! [SmartString]: struct.SmartString.html
 //! [LazyCompact]: struct.LazyCompact.html
@@ -97,6 +108,8 @@
 //! [transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
 //! [tinystr]: https://crates.io/crates/tinystr
 //! [serde]: https://crates.io/crates/serde
+//! [Serialize]: https://docs.rs/serde/latest/serde/trait.Serialize.html
+//! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
 
 #![forbid(rust_2018_idioms)]
 #![deny(nonstandard_style)]

@@ -49,3 +49,25 @@ impl<'de, T: SmartStringMode> Visitor<'de> for SmartStringVisitor<T> {
         Ok(SmartString::from(v))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Compact;
+
+    #[test]
+    fn test_ser_de() {
+        use serde_test::{assert_tokens, Token};
+
+        let strings = [
+            "",
+            "small test",
+            "longer than inline string for serde testing",
+        ];
+
+        for &string in strings.iter() {
+            let value = SmartString::<Compact>::from(string);
+            assert_tokens(&value, &[Token::String(string)]);
+        }
+    }
+}

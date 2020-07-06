@@ -12,6 +12,9 @@ categories = ["data-structures"]
 keywords = ["cache-local", "cpu-cache", "small-string", "sso", "inline-string"]
 exclude = ["release.toml", "proptest-regressions/**"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [[bench]]
 name = "smartstring"
 harness = false

@@ -493,21 +493,4 @@ mod tests {
         assert_eq!(control_smart, string);
         assert_eq!(Ordering::Equal, string.cmp(&control_smart));
     }
-
-    #[cfg(feature = "serde")]
-    #[test]
-    fn test_ser_de() {
-        use serde_test::{assert_tokens, Token};
-
-        let strings = [
-            "",
-            "small test",
-            "longer than inline string for serde testing",
-        ];
-
-        for &string in strings.iter() {
-            let value = SmartString::<Compact>::from(string);
-            assert_tokens(&value, &[Token::String(string)]);
-        }
-    }
 }
