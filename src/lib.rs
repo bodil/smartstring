@@ -383,10 +383,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(string) => string.string_mut().push(ch),
             StringCastMut::Inline(string) => {
                 let len = string.len();
-                if len + ch.len_utf8() > Mode::MAX_INLINE {
-                    let mut string = self.to_string();
-                    string.push(ch);
-                    self.promote_from(string);
+                let new_len = len + ch.len_utf8();
+                if new_len > Mode::MAX_INLINE {
+                    let mut new_str = String::with_capacity(new_len);
+                    new_str.push_str(string.as_str());
+                    new_str.push(ch);
+                    self.promote_from(new_str);
                 } else {
                     let written = ch.encode_utf8(&mut string.as_mut_slice()[len..]).len();
                     string.set_size(len + written);
@@ -401,10 +403,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         match self.cast_mut() {
             StringCastMut::Boxed(this) => this.string_mut().push_str(string),
             StringCastMut::Inline(this) => {
-                if len + string.len() > Mode::MAX_INLINE {
-                    let mut this = self.to_string();
-                    this.push_str(string);
-                    self.promote_from(this);
+                let new_len = len + string.len();
+                if new_len > Mode::MAX_INLINE {
+                    let mut new_str = String::with_capacity(new_len);
+                    new_str.push_str(this.as_str());
+                    new_str.push_str(string);
+                    self.promote_from(new_str);
                 } else {
                     this.as_mut_slice()[len..len + string.len()].copy_from_slice(string.as_bytes());
                     this.set_size(len + string.len());
