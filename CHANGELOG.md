@@ -10,7 +10,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ### ADDED
 
 -   `SmartString` now implements `FromIterator<char>`.
--   Support for [`serde`](https://serde.rs/) behind the `serde` feature flag.
+-   Support for [`serde`](https://serde.rs/) behind the `serde` feature flag. (#2)
 -   Support for [`arbitrary`](https://crates.io/crates/arbitrary) behind the `arbitrary` feature
     flag.
 -   Support for [`proptest`](https://crates.io/crates/proptest) behind the `proptest` feature flag.
