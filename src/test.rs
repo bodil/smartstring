@@ -6,6 +6,7 @@ use crate::{SmartString, SmartStringMode};
 use std::{
     cmp::Ordering,
     fmt::Debug,
+    iter::FromIterator,
     ops::{Index, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
     panic::{catch_unwind, set_hook, take_hook, AssertUnwindSafe},
 };
@@ -36,6 +37,7 @@ pub enum Constructor {
     New,
     FromString(String),
     FromStringSlice(String),
+    FromChars(Vec<char>),
 }
 
 impl Constructor {
@@ -44,6 +46,10 @@ impl Constructor {
             Self::New => (String::new(), SmartString::new()),
             Self::FromString(string) => (string.clone(), SmartString::from(string)),
             Self::FromStringSlice(string) => (string.clone(), SmartString::from(string.as_str())),
+            Self::FromChars(chars) => (
+                String::from_iter(chars.clone()),
+                SmartString::from_iter(chars.clone()),
+            ),
         }
     }
 }
@@ -352,7 +358,7 @@ fn assert_invariants<Mode: SmartStringMode>(control: &str, subject: &SmartString
         );
     }
     assert_eq!(
-        control.partial_cmp(&"ordering test".to_string()),
+        control.partial_cmp("ordering test"),
         subject.partial_cmp("ordering test")
     );
     let control_smart: SmartString<Mode> = control.into();

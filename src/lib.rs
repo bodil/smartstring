@@ -977,6 +977,16 @@ impl<'a, Mode: SmartStringMode> FromIterator<&'a String> for SmartString<Mode> {
     }
 }
 
+impl<Mode: SmartStringMode> FromIterator<char> for SmartString<Mode> {
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
+        let mut out = Self::new();
+        for ch in iter {
+            out.push(ch);
+        }
+        out
+    }
+}
+
 impl<Mode: SmartStringMode> FromStr for SmartString<Mode> {
     type Err = Infallible;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
