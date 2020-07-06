@@ -36,7 +36,11 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.marker.data() as usize
+        let len = self.marker.data() as usize;
+        // Panic immediately if inline length is too high, which suggests
+        // assumptions made about `String`'s memory layout are invalid.
+        assert!(len <= Mode::MAX_INLINE);
+        len
     }
 
     pub(crate) fn as_slice(&self) -> &[u8] {
