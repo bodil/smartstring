@@ -122,7 +122,7 @@ use std::{
     borrow::{Borrow, BorrowMut},
     cmp::Ordering,
     convert::Infallible,
-    fmt::{Debug, Error, Formatter, Write},
+    fmt::{Debug, Display, Error, Formatter, Write},
     hash::{Hash, Hasher},
     iter::FromIterator,
     mem::{forget, MaybeUninit},
@@ -1015,12 +1015,6 @@ impl<Mode: SmartStringMode> Into<String> for SmartString<Mode> {
     }
 }
 
-impl<Mode: SmartStringMode> ToString for SmartString<Mode> {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
-    }
-}
-
 impl<Mode: SmartStringMode> PartialEq<str> for SmartString<Mode> {
     fn eq(&self, other: &str) -> bool {
         self.as_str() == other
@@ -1086,6 +1080,12 @@ impl<Mode: SmartStringMode> Hash for SmartString<Mode> {
 impl<Mode: SmartStringMode> Debug for SmartString<Mode> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         Debug::fmt(self.as_str(), f)
+    }
+}
+
+impl<Mode: SmartStringMode> Display for SmartString<Mode> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        Display::fmt(self.as_str(), f)
     }
 }
 
