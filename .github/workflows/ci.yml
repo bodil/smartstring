@@ -85,19 +85,18 @@ jobs:
                   name: Clippy-${{ matrix.rust }}
                   token: ${{ secrets.GITHUB_TOKEN }}
                   args: --all-features
-
-    miri:
-        name: Miri
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v2
-            - uses: actions-rs/toolchain@v1
-              with:
-                  profile: minimal
-                  toolchain: nightly
-                  override: true
-                  components: miri
-            - name: Run Miri
-              run: |
-                  cargo miri setup
-                  cargo miri test -- -Zmiri-disable-isolation -- --skip proptest --skip ser_de
+    # miri:
+    #     name: Miri
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - uses: actions/checkout@v2
+    #         - uses: actions-rs/toolchain@v1
+    #           with:
+    #               profile: minimal
+    #               toolchain: nightly
+    #               override: true
+    #               components: miri
+    #         - name: Run Miri
+    #           run: |
+    #               cargo miri setup
+    #               cargo miri test -- -Zmiri-disable-isolation -- --skip proptest --skip ser_de
