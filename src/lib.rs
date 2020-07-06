@@ -95,6 +95,7 @@
 //!
 //! | Feature | Description |
 //! | ------- | ----------- |
+//! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`][SmartString] |
 //! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`][SmartString] |
 //!
 //! [SmartString]: struct.SmartString.html
@@ -110,6 +111,7 @@
 //! [serde]: https://crates.io/crates/serde
 //! [Serialize]: https://docs.rs/serde/latest/serde/trait.Serialize.html
 //! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
+//! [Arbitrary]: https://docs.rs/arbitrary/latest/arbitrary/trait.Arbitrary.html
 
 #![forbid(rust_2018_idioms)]
 #![deny(nonstandard_style)]
@@ -151,6 +153,9 @@ pub use iter::Drain;
 
 #[cfg(feature = "serde")]
 mod serde;
+
+#[cfg(feature = "arbitrary")]
+mod arbitrary;
 
 /// Convenient type aliases.
 pub mod alias {
