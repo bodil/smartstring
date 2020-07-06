@@ -13,6 +13,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 -   Support for [`serde`](https://serde.rs/) behind the `serde` feature flag.
 -   Support for [`arbitrary`](https://crates.io/crates/arbitrary) behind the `arbitrary` feature
     flag.
+-   Support for [`proptest`](https://crates.io/crates/proptest) behind the `proptest` feature flag.
 
 ## [0.2.2] - 2020-07-05
 

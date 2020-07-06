@@ -90,13 +90,14 @@
 //!
 //! ```no_compile
 //! [dependencies]
-//! smartstring = { version = "*", features = ["serde"] }
+//! smartstring = { version = "*", features = ["proptest", "serde"] }
 //! ```
 //!
 //! | Feature | Description |
 //! | ------- | ----------- |
-//! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`][SmartString] |
-//! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`][SmartString] |
+//! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`][SmartString]. |
+//! | [`proptest`](https://crates.io/crates/proptest) | A strategy for generating [`SmartString`][SmartString]s from a regular expression. |
+//! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`][SmartString]. |
 //!
 //! [SmartString]: struct.SmartString.html
 //! [LazyCompact]: struct.LazyCompact.html
@@ -156,6 +157,9 @@ mod serde;
 
 #[cfg(feature = "arbitrary")]
 mod arbitrary;
+
+#[cfg(feature = "proptest")]
+pub mod proptest;
 
 /// Convenient type aliases.
 pub mod alias {

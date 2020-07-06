@@ -48,7 +48,7 @@ impl Constructor {
             Self::FromStringSlice(string) => (string.clone(), SmartString::from(string.as_str())),
             Self::FromChars(chars) => (
                 String::from_iter(chars.clone()),
-                SmartString::from_iter(chars.clone()),
+                SmartString::from_iter(chars),
             ),
         }
     }
