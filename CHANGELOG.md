@@ -21,6 +21,8 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 -   `SmartString::push_str` would previously trigger two heap allocations while promoting an inline
     string to a boxed string, one of which was unnecessary. It now only makes the one strictly
     necessary allocation. (#5)
+-   Fixed a bug where `SmartString::remove` would panic if you tried to remove the last index in an
+    inline string.
 
 ## [0.2.2] - 2020-07-05
 

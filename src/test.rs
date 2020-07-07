@@ -499,4 +499,11 @@ mod tests {
         assert_eq!(control_smart, string);
         assert_eq!(Ordering::Equal, string.cmp(&control_smart));
     }
+
+    #[test]
+    fn dont_panic_on_removing_last_index_from_an_inline_string() {
+        let mut s =
+            SmartString::<Compact>::from("\u{323}\u{323}\u{323}ω\u{323}\u{323}\u{323}㌣\u{e323}㤘");
+        s.remove(20);
+    }
 }

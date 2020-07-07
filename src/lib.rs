@@ -502,9 +502,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 };
                 let next = index + ch.len_utf8();
                 let len = string.len();
-                unsafe {
-                    (&mut string.as_mut_slice()[index] as *mut u8)
-                        .copy_from(&string.as_slice()[next], len - next);
+                let tail_len = len - next;
+                if tail_len > 0 {
+                    unsafe {
+                        (&mut string.as_mut_slice()[index] as *mut u8)
+                            .copy_from(&string.as_slice()[next], tail_len);
+                    }
                 }
                 string.set_size(len - (next - index));
                 return ch;
