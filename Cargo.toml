@@ -20,7 +20,9 @@ name = "smartstring"
 harness = false
 
 [features]
+default = ["lazy_null_pointer_optimizations"]
 test = ["arbitrary", "arbitrary/derive"]
+lazy_null_pointer_optimizations = []
 
 [dependencies]
 static_assertions = "1.1.0"

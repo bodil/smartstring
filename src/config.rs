@@ -2,9 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::{boxed::BoxedString, inline::InlineString, SmartString};
+use crate::{boxed::{BoxedString, PseudoString}, inline::InlineString, SmartString};
 use static_assertions::{assert_eq_size, const_assert, const_assert_eq};
-use std::mem::{align_of, size_of};
+use std::mem::{align_of, size_of, MaybeUninit};
 
 /// A compact string representation equal to [`String`][String] in size with guaranteed inlining.
 ///
@@ -47,31 +47,115 @@ pub struct LazyCompact;
 /// [SmartString]: struct.SmartString.html
 /// [Compact]: struct.Compact.html
 /// [LazyCompact]: struct.LazyCompact.html
-pub trait SmartStringMode {
+///
+/// Implementing this trait is extremely unsafe and not recommended
+/// The requirements are that:
+/// * std::mem::size_of<DiscriminantContainer> == std::mem::size_of<usize>
+/// * std::mem::align_of<DiscriminantContainer> == std::mem::align_of<usize>
+/// * std::mem::size_of<BoxedString> == std::size_of<String>
+/// * std::mem::align_of<BoxedString> == std::mem::align_of<String>
+/// * It should be always safe to transmute from BoxedString into SmartString<Mode>
+/// * The highmost bit of BoxedString must be one
+/// * If the highest std::mem::size_of<usize> bytes of BoxedString were casted into DiscriminantContainer
+/// at any time, even in methods of BoxedString, it must be a valid DiscriminantContainer.
+pub unsafe trait SmartStringMode {
     /// The boxed string type for this layout.
-    type BoxedString: BoxedString + From<String>;
-    /// The inline string type for this layout.
-    type InlineArray: AsRef<[u8]> + AsMut<[u8]> + Clone + Copy;
+    type BoxedString: BoxedString;
     /// The maximum capacity of an inline string, in bytes.
     const MAX_INLINE: usize;
     /// A constant to decide whether to turn a wrapped string back into an inlined
     /// string whenever possible (`true`) or leave it as a wrapped string once wrapping
     /// has occurred (`false`).
     const DEALLOC: bool;
+    /// Unfortunately const generics don't exists at the time of writing
+    /// If DEALLOC == true or cfg!(feature = "lazy_null_pointer_optimizations") == true, this should be std::num::NonZeroUsize,
+    /// Otherwise it should be PossiblyZeroSize
+    type DiscriminantContainer: DiscriminantContainer;
 }
 
-impl SmartStringMode for Compact {
-    type BoxedString = String;
-    type InlineArray = [u8; size_of::<String>() - 1];
+/// Contains the discriminant. This is a visible field in the SmartString struct, so the compiler
+/// is able to make null pointer optimizations when the type allows them.
+pub trait DiscriminantContainer {
+    /// Returns the full marker byte
+    fn get_full_marker(&self) -> u8;
+    /// Return Self with the requirement that the marker is inside
+    fn new(marker: u8) -> Self;
+    /// Flip the highest bit of marker
+    unsafe fn flip_bit(&mut self);
+}
+
+impl DiscriminantContainer for std::num::NonZeroUsize {
+    fn get_full_marker(&self) -> u8 {
+        (self.get() >> (std::mem::size_of::<usize>() - 1)*8) as u8
+    }
+    fn new(marker: u8) -> Self {
+        unsafe {
+            Self::new_unchecked(
+                ((marker as usize) << (std::mem::size_of::<usize>() - 1)*8) + 1
+            )
+        }
+    }
+    unsafe fn flip_bit(&mut self) {
+        *self = Self::new_unchecked(self.get());
+    }
+}
+
+/// A structure that stores a marker and raw data
+#[cfg(target_endian = "big")]
+#[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
+#[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
+struct PossiblyZeroSize {
+    marker: u8,
+    data: [MaybeUninit<u8>; std::mem::size_of::<usize>() - 1],
+}
+
+/// A structure that stores a marker and raw data
+#[cfg(target_endian = "little")]
+#[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
+#[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
+#[derive(Debug)]
+pub struct PossiblyZeroSize {
+    data: [MaybeUninit<u8>; std::mem::size_of::<usize>() - 1],
+    marker: u8,
+}
+
+impl DiscriminantContainer for PossiblyZeroSize {
+    fn get_full_marker(&self) -> u8 {
+        self.marker
+    }
+    fn new(marker: u8) -> Self {
+        Self {
+            marker,
+            data: [MaybeUninit::uninit(); std::mem::size_of::<usize>() - 1],
+        }
+    }
+    unsafe fn flip_bit(&mut self) {
+        self.marker^= 128;
+    }
+}
+
+unsafe impl SmartStringMode for Compact {
+    type BoxedString = PseudoString;
     const MAX_INLINE: usize = size_of::<String>() - 1;
     const DEALLOC: bool = true;
+    type DiscriminantContainer = std::num::NonZeroUsize;
 }
 
-impl SmartStringMode for LazyCompact {
-    type BoxedString = String;
-    type InlineArray = [u8; size_of::<String>() - 1];
+
+#[cfg(not(feature = "lazy_null_pointer_optimizations"))]
+unsafe impl SmartStringMode for LazyCompact {
+    type BoxedString = PseudoString;
     const MAX_INLINE: usize = size_of::<String>() - 1;
     const DEALLOC: bool = false;
+    type DiscriminantContainer = PossiblyZeroSize;
+}
+
+#[cfg(feature = "lazy_null_pointer_optimizations")]
+unsafe impl SmartStringMode for LazyCompact {
+    type BoxedString = PseudoString;
+    const MAX_INLINE: usize = size_of::<String>() - 1;
+    const DEALLOC: bool = false;
+    type DiscriminantContainer = std::num::NonZeroUsize;
 }
 
 // Assert that we're not using more space than we can encode in the header byte,
@@ -93,6 +177,10 @@ assert_eq_size!(InlineString<LazyCompact>, SmartString<LazyCompact>);
 
 assert_eq_size!(String, SmartString<Compact>);
 assert_eq_size!(String, SmartString<LazyCompact>);
+
+assert_eq_size!(SmartString<Compact>, Option<SmartString<Compact>>);
+#[cfg(feature = "lazy_null_pointer_optimizations")]
+assert_eq_size!(SmartString<LazyCompact>, Option<SmartString<LazyCompact>>);
 
 // Assert that `SmartString` is aligned correctly.
 const_assert_eq!(align_of::<String>(), align_of::<SmartString<Compact>>());
