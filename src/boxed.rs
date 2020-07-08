@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{SmartStringMode, SmartString, inline::InlineString};
 
 pub trait BoxedString: Deref<Target = str> + DerefMut + Into<String> {
-    //This is unsafe when null pointer optimizations are used
+    //This is unsafe when null pointer optimizations are used with LazyCompact
     //Then, it is unsound if the capacity of the string is 0
     unsafe fn from_string_unchecked(string: String) -> Self;
     fn capacity(&self) -> usize;
@@ -25,9 +25,9 @@ pub struct PseudoString {
 #[cfg(target_endian = "little")]
 #[cfg(not(feature = "lazy_null_pointer_optimizations"))]
 #[repr(C)]
+#[derive(Debug)]
 //This seems to be the most common arrangement of std::String
 //However, with lazy null pointer optimizations, this arrangement does not work
-#[derive(Debug)]
 pub struct PseudoString {
     ptr: std::ptr::NonNull<u8>,
     capacity: usize,

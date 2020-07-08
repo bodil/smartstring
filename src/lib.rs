@@ -210,7 +210,7 @@ pub struct SmartString<Mode: SmartStringMode> {
     data: [MaybeUninit<u8>; 2*std::mem::size_of::<usize>()],
 }
 
-//Documentation needs to be duplicated for
+//Documentation needs to be duplicated
 
 /// A smart string.
 ///
@@ -356,17 +356,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         std::ptr::write(ptr, boxed::PseudoString::from_string_unchecked(string));
     }
 
-    /// Attempt to inline the string if it's currently heap allocated.
-    ///
-    /// Returns the resulting state: `true` if it's inlined, `false` if it's not.
-    fn try_demote(&mut self) -> bool {
-        if Mode::DEALLOC {
-            self.really_try_demote()
-        } else {
-            false
-        }
-    }
-
     /// Attempt to inline the string regardless of whether `Mode::DEALLOC` is set.
     fn really_try_demote(&mut self) -> bool {
         let inlined = if let StringCastMut::Boxed(string) = self.cast_mut() {
@@ -508,7 +497,10 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
         }
-        self.really_try_demote();
+        if !Mode::DEALLOC && !cfg!(lazy_null_pointer_optimizations) {
+            self.really_try_demote();
+        }
+        //Else: the demotion is already done by StringReference
     }
 
     /// Truncate the string to `new_len` bytes.
@@ -528,7 +520,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
         }
-        self.try_demote();
     }
 
     /// Pop a `char` off the end of the string.
@@ -541,7 +532,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return Some(ch);
             }
         };
-        self.try_demote();
         Some(result)
     }
 
@@ -565,7 +555,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return ch;
             }
         };
-        self.try_demote();
         result
     }
 
@@ -642,7 +631,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return result;
             }
         };
-        self.try_demote();
         result.into()
     }
 
@@ -694,7 +682,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
         }
-        self.try_demote();
     }
 
     /// Construct a draining iterator over a given range.
