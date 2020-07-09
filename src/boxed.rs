@@ -98,7 +98,7 @@ impl BoxedString for PseudoString {
     }
 
     fn capacity(&self) -> usize {
-        usize::from(self.capacity) << 1 >> 1
+        usize::from(self.capacity)
     }
 }
 

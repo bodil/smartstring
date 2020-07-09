@@ -511,4 +511,12 @@ mod tests {
             SmartString::<Compact>::from("\u{323}\u{323}\u{323}ω\u{323}\u{323}\u{323}㌣\u{e323}㤘");
         s.remove(20);
     }
+
+    #[test]
+    fn return_reasonable_capacity() {
+        let boxed = SmartString::<LazyCompact>::from("𝕃𝕠𝕟𝕘𝕖𝕣 𝕥𝕙𝕒𝕟 𝟚𝟛 𝕓𝕪𝕥𝕖𝕤");
+        let inlined = SmartString::<LazyCompact>::from("Shorter");
+        assert!(boxed.capacity() <= isize::MAX as usize);
+        assert!(inlined.capacity() == std::mem::size_of::<String>() - 1);
+    }
 }
