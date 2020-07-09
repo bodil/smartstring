@@ -2,7 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::{boxed::{BoxedString, PseudoString}, inline::InlineString, SmartString};
+use crate::{
+    boxed::{BoxedString, PseudoString},
+    inline::InlineString,
+    SmartString,
+};
 use static_assertions::{assert_eq_size, const_assert, const_assert_eq};
 use std::mem::{align_of, size_of, MaybeUninit};
 
@@ -90,13 +94,11 @@ pub trait DiscriminantContainer {
 
 impl DiscriminantContainer for std::num::NonZeroUsize {
     fn get_full_marker(&self) -> u8 {
-        (self.get() >> ((std::mem::size_of::<usize>() - 1)*8)) as u8
+        (self.get() >> ((std::mem::size_of::<usize>() - 1) * 8)) as u8
     }
     fn new(marker: u8) -> Self {
         unsafe {
-            Self::new_unchecked(
-                ((marker as usize) << ((std::mem::size_of::<usize>() - 1)*8)) + 1
-            )
+            Self::new_unchecked(((marker as usize) << ((std::mem::size_of::<usize>() - 1) * 8)) + 1)
         }
     }
     unsafe fn flip_bit(&mut self) {
@@ -134,7 +136,7 @@ impl DiscriminantContainer for PossiblyZeroSize {
         }
     }
     unsafe fn flip_bit(&mut self) {
-        self.marker^= 128;
+        self.marker ^= 128;
     }
 }
 
@@ -144,7 +146,6 @@ unsafe impl SmartStringMode for Compact {
     const DEALLOC: bool = true;
     type DiscriminantContainer = std::num::NonZeroUsize;
 }
-
 
 #[cfg(not(feature = "lazy_null_pointer_optimizations"))]
 unsafe impl SmartStringMode for LazyCompact {

@@ -1,8 +1,8 @@
-use crate::{SmartString, SmartStringMode, casts::StringCastMut};
+use crate::{casts::StringCastMut, SmartString, SmartStringMode};
 use std::{
     fmt::{Debug, Error, Formatter},
     iter::FusedIterator,
-    ops::{RangeBounds, Bound},
+    ops::{Bound, RangeBounds},
 };
 
 /// A draining iterator for a [`SmartString`][SmartString].
@@ -75,9 +75,13 @@ where
         //We must first replace the iterator with a dummy one, so it won't dangle
         self.iterator = "".chars();
         //Now we can safely clear the string
-        unsafe { match (*self.string).cast_mut() {
-            StringCastMut::Boxed(mut string) => {string.drain(self.start..self.end);},
-            StringCastMut::Inline(string) => string.remove_bytes(self.start, self.end),
-        }}
+        unsafe {
+            match (*self.string).cast_mut() {
+                StringCastMut::Boxed(mut string) => {
+                    string.drain(self.start..self.end);
+                }
+                StringCastMut::Inline(string) => string.remove_bytes(self.start, self.end),
+            }
+        }
     }
 }

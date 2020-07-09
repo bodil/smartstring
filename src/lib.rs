@@ -135,7 +135,7 @@ use std::{
 };
 
 mod config;
-pub use config::{Compact, LazyCompact, SmartStringMode, DiscriminantContainer, PossiblyZeroSize};
+pub use config::{Compact, DiscriminantContainer, LazyCompact, PossiblyZeroSize, SmartStringMode};
 
 mod marker_byte;
 use marker_byte::Discriminant;
@@ -147,7 +147,7 @@ mod boxed;
 use boxed::BoxedString;
 
 mod casts;
-use casts::{StringCast, StringCastInto, StringCastMut, please_transmute};
+use casts::{please_transmute, StringCast, StringCastInto, StringCastMut};
 
 mod iter;
 pub use iter::Drain;
@@ -207,7 +207,7 @@ pub mod alias {
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
 pub struct SmartString<Mode: SmartStringMode> {
     disc: Mode::DiscriminantContainer,
-    data: [MaybeUninit<u8>; 2*std::mem::size_of::<usize>()],
+    data: [MaybeUninit<u8>; 2 * std::mem::size_of::<usize>()],
 }
 
 //Documentation needs to be duplicated
@@ -238,7 +238,7 @@ pub struct SmartString<Mode: SmartStringMode> {
 #[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
 pub struct SmartString<Mode: SmartStringMode> {
-    data: [MaybeUninit<u8>; 2*std::mem::size_of::<usize>()],
+    data: [MaybeUninit<u8>; 2 * std::mem::size_of::<usize>()],
     disc: Mode::DiscriminantContainer,
 }
 
@@ -281,16 +281,18 @@ impl<Mode: SmartStringMode> Deref for SmartString<Mode> {
 impl<Mode: SmartStringMode> DerefMut for SmartString<Mode> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { match self.discriminant() {
-            Discriminant::Boxed => {
-                let boxed : &mut Mode::BoxedString = &mut *(self as *mut Self).cast();
-                boxed
+        unsafe {
+            match self.discriminant() {
+                Discriminant::Boxed => {
+                    let boxed: &mut Mode::BoxedString = &mut *(self as *mut Self).cast();
+                    boxed
+                }
+                Discriminant::Inline => {
+                    let inline: &mut InlineString<Mode> = &mut *(self as *mut Self).cast();
+                    inline
+                }
             }
-            Discriminant::Inline => {
-                let inline : &mut InlineString<Mode> = &mut *(self as *mut Self).cast();
-                inline
-            }
-        }}
+        }
     }
 }
 
@@ -302,15 +304,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     fn from_boxed(boxed: Mode::BoxedString) -> Self {
-        unsafe {
-            please_transmute(boxed)
-        }
+        unsafe { please_transmute(boxed) }
     }
 
     fn from_inline(inline: InlineString<Mode>) -> Self {
-        unsafe {
-            please_transmute(inline)
-        }
+        unsafe { please_transmute(inline) }
     }
 
     fn discriminant(&self) -> Discriminant {
@@ -330,11 +328,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
 
     fn cast_mut(&mut self) -> StringCastMut<'_, Mode> {
         match self.discriminant() {
-            Discriminant::Inline => StringCastMut::Inline(unsafe { &mut *(self as *mut Self).cast() }),
+            Discriminant::Inline => {
+                StringCastMut::Inline(unsafe { &mut *(self as *mut Self).cast() })
+            }
             Discriminant::Boxed => {
-                StringCastMut::Boxed( unsafe {
-                    boxed::StringReference::from_smart_unchecked(self)
-                })
+                StringCastMut::Boxed(unsafe { boxed::StringReference::from_smart_unchecked(self) })
             }
         }
     }
@@ -367,9 +365,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         } else {
             return true;
         };
-        std::mem::forget(
-            std::mem::replace(self, inlined)
-        );
+        std::mem::forget(std::mem::replace(self, inlined));
         true
     }
 
@@ -423,15 +419,19 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                         //These have to be initialized, as we are passing u8:s into encode_utf8
                         *e = std::mem::MaybeUninit::new(0);
                     }
-                    let written = ch.encode_utf8( unsafe {
-                        &mut *(&mut string.data[len..new_len] as *mut [std::mem::MaybeUninit<u8>] as *mut [u8])
-                    }).len();
+                    let written = ch
+                        .encode_utf8(unsafe {
+                            &mut *(&mut string.data[len..new_len]
+                                as *mut [std::mem::MaybeUninit<u8>]
+                                as *mut [u8])
+                        })
+                        .len();
                     unsafe { string.set_len(len + written) };
                     return;
                 }
             }
         };
-        unsafe {self.promote_from(promote)};
+        unsafe { self.promote_from(promote) };
     }
 
     /// Copy a string slice onto the end of the string.
@@ -452,15 +452,16 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 } else {
                     unsafe {
                         this.as_mut_slice()[len..new_len].copy_from_slice(
-                            &*(string.as_bytes() as *const [u8] as *const [std::mem::MaybeUninit<u8>])
+                            &*(string.as_bytes() as *const [u8]
+                                as *const [std::mem::MaybeUninit<u8>]),
                         );
                         this.set_len(new_len);
                     }
-                    return
+                    return;
                 }
             }
         };
-        unsafe {self.promote_from(promote)};
+        unsafe { self.promote_from(promote) };
     }
 
     /// Return the currently allocated capacity of the string.
@@ -517,9 +518,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Inline(string) => {
                 if new_len < string.len() {
                     assert!(string.is_char_boundary(new_len));
-                    unsafe {
-                        string.set_len(new_len)
-                    };
+                    unsafe { string.set_len(new_len) };
                 }
             }
         }
@@ -531,7 +530,9 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(mut string) => string.pop()?,
             StringCastMut::Inline(string) => {
                 let ch = string.chars().rev().next()?;
-                unsafe {string.set_len(string.len() - ch.len_utf8());}
+                unsafe {
+                    string.set_len(string.len() - ch.len_utf8());
+                }
                 return Some(ch);
             }
         };
@@ -554,7 +555,9 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 let tail_len = len - next;
                 unsafe {
                     if tail_len > 0 {
-                        string.data[index].as_mut_ptr().copy_from(string.data[next].as_ptr(), len - next);
+                        string.data[index]
+                            .as_mut_ptr()
+                            .copy_from(string.data[next].as_ptr(), len - next);
                     }
                     string.set_len(len - (next - index));
                 }
@@ -589,7 +592,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 string
             }
         };
-        unsafe {self.promote_from(promote)};
+        unsafe { self.promote_from(promote) };
     }
 
     /// Insert a string slice into the string at the given index.
@@ -605,16 +608,16 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 if !this.is_char_boundary(index) {
                     panic!();
                 }
-                unsafe {this.insert_bytes(index, string.as_bytes())};
+                unsafe { this.insert_bytes(index, string.as_bytes()) };
                 return;
-            },
+            }
             StringCastMut::Inline(this) => {
                 let mut this = this.to_string();
                 this.insert_str(index, string);
                 this
             }
         };
-        unsafe {self.promote_from(promote)};
+        unsafe { self.promote_from(promote) };
     }
 
     /// Split the string into two at the given index.
@@ -658,13 +661,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 let mut index = 0;
 
                 while index < len {
-                    let ch = unsafe {
-                        string
-                            .get_unchecked(index..len)
-                            .chars()
-                            .next()
-                            .unwrap()
-                    };
+                    let ch = unsafe { string.get_unchecked(index..len).chars().next().unwrap() };
                     let ch_len = ch.len_utf8();
 
                     if !f(ch) {
@@ -706,7 +703,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(mut string) => {
                 string.replace_range(range, replace_with);
                 return;
-            },
+            }
             StringCastMut::Inline(string) => {
                 let len = string.len();
                 let (start, end) = bounds_for(&range, len);
@@ -886,9 +883,7 @@ impl<Mode: SmartStringMode> From<&'_ str> for SmartString<Mode> {
 impl<Mode: SmartStringMode> From<&'_ String> for SmartString<Mode> {
     fn from(string: &'_ String) -> Self {
         if string.len() > Mode::MAX_INLINE {
-            Self::from_boxed(unsafe {
-                Mode::BoxedString::from_string_unchecked(string.clone())
-            })
+            Self::from_boxed(unsafe { Mode::BoxedString::from_string_unchecked(string.clone()) })
         } else {
             Self::from_inline(string.as_bytes().into())
         }
@@ -898,9 +893,7 @@ impl<Mode: SmartStringMode> From<&'_ String> for SmartString<Mode> {
 impl<Mode: SmartStringMode> From<String> for SmartString<Mode> {
     fn from(string: String) -> Self {
         if string.len() > Mode::MAX_INLINE {
-            Self::from_boxed(unsafe {
-                Mode::BoxedString::from_string_unchecked(string)
-            })
+            Self::from_boxed(unsafe { Mode::BoxedString::from_string_unchecked(string) })
         } else {
             Self::from_inline(string.as_bytes().into())
         }

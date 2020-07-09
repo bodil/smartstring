@@ -5,9 +5,9 @@
 use crate::SmartStringMode;
 use std::{
     mem::MaybeUninit,
+    ops::{Deref, DerefMut},
     slice::{from_raw_parts, from_raw_parts_mut},
     str::{from_utf8_unchecked, from_utf8_unchecked_mut},
-    ops::{Deref, DerefMut},
 };
 
 #[cfg(target_endian = "big")]
@@ -15,7 +15,7 @@ use std::{
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
 pub(crate) struct InlineString<Mode: SmartStringMode> {
     pub(crate) marker: u8,
-    pub(crate) data: [MaybeUninit<u8>; 3*std::mem::size_of::<usize>() - 1],
+    pub(crate) data: [MaybeUninit<u8>; 3 * std::mem::size_of::<usize>() - 1],
     phantom: std::marker::PhantomData<*const Mode>,
 }
 
@@ -23,7 +23,7 @@ pub(crate) struct InlineString<Mode: SmartStringMode> {
 #[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
 pub(crate) struct InlineString<Mode: SmartStringMode> {
-    pub(crate) data: [MaybeUninit<u8>; 3*std::mem::size_of::<usize>() - 1],
+    pub(crate) data: [MaybeUninit<u8>; 3 * std::mem::size_of::<usize>() - 1],
     pub(crate) marker: u8,
     phantom: std::marker::PhantomData<*const Mode>,
 }
@@ -59,7 +59,7 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
     pub(crate) fn new() -> Self {
         let mut ret = Self {
             marker: 128,
-            data: [MaybeUninit::uninit(); 3*std::mem::size_of::<usize>() - 1],
+            data: [MaybeUninit::uninit(); 3 * std::mem::size_of::<usize>() - 1],
             phantom: std::marker::PhantomData,
         };
         //Are nullptr optimizations on?
@@ -67,7 +67,7 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
             //Initialize the 7 highest bytes of data
             for j in 0..(std::mem::size_of::<usize>() - 1) {
                 #[cfg(target_endian = "little")]
-                let j = 3*std::mem::size_of::<usize>() - 3 - j;
+                let j = 3 * std::mem::size_of::<usize>() - 3 - j;
 
                 ret.data[j] = MaybeUninit::zeroed();
             }

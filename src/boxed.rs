@@ -2,8 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use crate::{inline::InlineString, SmartString, SmartStringMode};
 use std::ops::{Deref, DerefMut};
-use crate::{SmartStringMode, SmartString, inline::InlineString};
 
 pub trait BoxedString: Deref<Target = str> + DerefMut + Into<String> {
     //This is unsafe when null pointer optimizations are used with LazyCompact
@@ -67,19 +67,22 @@ impl From<PseudoString> for String {
     #[inline(always)]
     fn from(string: PseudoString) -> Self {
         unsafe {
-            String::from_raw_parts(string.ptr.as_ptr(), string.size, usize::from(string.capacity))
+            String::from_raw_parts(
+                string.ptr.as_ptr(),
+                string.size,
+                usize::from(string.capacity),
+            )
         }
     }
 }
 
-
 #[cfg(feature = "lazy_null_pointer_optimizations")]
-unsafe fn to_capacity(size: usize) -> std::num::NonZeroUsize  {
+unsafe fn to_capacity(size: usize) -> std::num::NonZeroUsize {
     std::num::NonZeroUsize::new_unchecked(size)
 }
 
 #[cfg(not(feature = "lazy_null_pointer_optimizations"))]
-fn to_capacity(size: usize) -> usize  {
+fn to_capacity(size: usize) -> usize {
     size
 }
 
@@ -94,7 +97,11 @@ impl BoxedString for PseudoString {
         let size = bytes.len();
         std::mem::forget(string);
 
-        Self {ptr: std::ptr::NonNull::new_unchecked(ptr), size, capacity: to_capacity(capacity)}
+        Self {
+            ptr: std::ptr::NonNull::new_unchecked(ptr),
+            size,
+            capacity: to_capacity(capacity),
+        }
     }
 
     fn capacity(&self) -> usize {
@@ -111,12 +118,15 @@ pub(crate) struct StringReference<'a, Mode: SmartStringMode> {
 impl<'a, Mode: SmartStringMode> StringReference<'a, Mode> {
     //Safety: Discriminant must be boxed
     pub(crate) unsafe fn from_smart_unchecked(smart: &'a mut SmartString<Mode>) -> Self {
-        debug_assert_eq!(smart.discriminant(), crate::marker_byte::Discriminant::Boxed);
-        let boxed : Mode::BoxedString = std::mem::transmute_copy(smart);
+        debug_assert_eq!(
+            smart.discriminant(),
+            crate::marker_byte::Discriminant::Boxed
+        );
+        let boxed: Mode::BoxedString = std::mem::transmute_copy(smart);
         let string = boxed.into();
         Self {
             referrant: smart,
-            string
+            string,
         }
     }
 }
@@ -124,7 +134,9 @@ impl<'a, Mode: SmartStringMode> StringReference<'a, Mode> {
 impl<'a, Mode: SmartStringMode> Drop for StringReference<'a, Mode> {
     fn drop(&mut self) {
         let string = std::mem::replace(&mut self.string, String::new());
-        if (Mode::DEALLOC && string.len() <= Mode::MAX_INLINE) || (!Mode::DEALLOC && cfg!(lazy_null_pointer_optimizations) && string.capacity() == 0) {
+        if (Mode::DEALLOC && string.len() <= Mode::MAX_INLINE)
+            || (!Mode::DEALLOC && cfg!(lazy_null_pointer_optimizations) && string.capacity() == 0)
+        {
             let transmuted = (self as *mut Self).cast();
             unsafe {
                 std::ptr::write(*transmuted, InlineString::<Mode>::from(string.as_bytes()));
@@ -132,7 +144,10 @@ impl<'a, Mode: SmartStringMode> Drop for StringReference<'a, Mode> {
         } else {
             let transmuted = (self as *mut Self).cast();
             unsafe {
-                std::ptr::write(*transmuted, Mode::BoxedString::from_string_unchecked(string));
+                std::ptr::write(
+                    *transmuted,
+                    Mode::BoxedString::from_string_unchecked(string),
+                );
             }
         }
     }
