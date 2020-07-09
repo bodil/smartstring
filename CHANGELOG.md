@@ -5,15 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.3] - 2020-07-07
 
 ### ADDED
 
+-   `SmartString` now implements `Display`. (#6)
 -   `SmartString` now implements `FromIterator<char>`.
 -   Support for [`serde`](https://serde.rs/) behind the `serde` feature flag. (#2)
 -   Support for [`arbitrary`](https://crates.io/crates/arbitrary) behind the `arbitrary` feature
     flag.
 -   Support for [`proptest`](https://crates.io/crates/proptest) behind the `proptest` feature flag.
+
+### FIXED
+
+-   `SmartString::push_str` would previously trigger two heap allocations while promoting an inline
+    string to a boxed string, one of which was unnecessary. It now only makes the one strictly
+    necessary allocation. (#5)
+-   Fixed a bug where `SmartString::remove` would panic if you tried to remove the last index in an
+    inline string.
 
 ## [0.2.2] - 2020-07-05
 

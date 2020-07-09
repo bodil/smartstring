@@ -123,7 +123,7 @@ use std::{
     borrow::{Borrow, BorrowMut},
     cmp::Ordering,
     convert::Infallible,
-    fmt::{Debug, Error, Formatter, Write},
+    fmt::{Debug, Display, Error, Formatter, Write},
     hash::{Hash, Hasher},
     iter::FromIterator,
     mem::MaybeUninit,
@@ -412,18 +412,19 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             }
             StringCastMut::Inline(string) => {
                 let len = string.len();
-                let chlen = ch.len_utf8();
-                if len + chlen > Mode::MAX_INLINE {
-                    let mut string = string.to_string();
-                    string.push(ch);
-                    string
+                let new_len = len + ch.len_utf8();
+                if new_len > Mode::MAX_INLINE {
+                    let mut new_str = String::with_capacity(new_len);
+                    new_str.push_str(string);
+                    new_str.push(ch);
+                    new_str
                 } else {
-                    for e in &mut string.data[len..(len + chlen)] {
+                    for e in &mut string.data[len..new_len] {
                         //These have to be initialized, as we are passing u8:s into encode_utf8
                         *e = std::mem::MaybeUninit::new(0);
                     }
                     let written = ch.encode_utf8( unsafe {
-                        &mut *(&mut string.data[len..(len + chlen)] as *mut [std::mem::MaybeUninit<u8>] as *mut [u8])
+                        &mut *(&mut string.data[len..new_len] as *mut [std::mem::MaybeUninit<u8>] as *mut [u8])
                     }).len();
                     unsafe { string.set_len(len + written) };
                     return;
@@ -442,16 +443,18 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
             StringCastMut::Inline(this) => {
-                if len + string.len() > Mode::MAX_INLINE {
-                    let mut this = this.to_string();
-                    this.push_str(string);
-                    this
+                let new_len = len + string.len();
+                if new_len > Mode::MAX_INLINE {
+                    let mut new_str = String::with_capacity(new_len);
+                    new_str.push_str(this);
+                    new_str.push_str(string);
+                    new_str
                 } else {
                     unsafe {
-                        this.as_mut_slice()[len..len + string.len()].copy_from_slice(
+                        this.as_mut_slice()[len..new_len].copy_from_slice(
                             &*(string.as_bytes() as *const [u8] as *const [std::mem::MaybeUninit<u8>])
                         );
-                        this.set_len(len + string.len());
+                        this.set_len(new_len);
                     }
                     return
                 }
@@ -548,8 +551,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 };
                 let next = index + ch.len_utf8();
                 let len = string.len();
+                let tail_len = len - next;
                 unsafe {
-                    string.data[index].as_mut_ptr().copy_from(string.data[next].as_ptr(), len - next);
+                    if tail_len > 0 {
+                        string.data[index].as_mut_ptr().copy_from(string.data[next].as_ptr(), len - next);
+                    }
                     string.set_len(len - (next - index));
                 }
                 ch
@@ -1084,12 +1090,6 @@ impl<Mode: SmartStringMode> Into<String> for SmartString<Mode> {
     }
 }
 
-impl<Mode: SmartStringMode> ToString for SmartString<Mode> {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
-    }
-}
-
 impl<Mode: SmartStringMode> PartialEq<str> for SmartString<Mode> {
     fn eq(&self, other: &str) -> bool {
         self.as_str() == other
@@ -1155,6 +1155,12 @@ impl<Mode: SmartStringMode> Hash for SmartString<Mode> {
 impl<Mode: SmartStringMode> Debug for SmartString<Mode> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         Debug::fmt(self.as_str(), f)
+    }
+}
+
+impl<Mode: SmartStringMode> Display for SmartString<Mode> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        Display::fmt(self.as_str(), f)
     }
 }
 
