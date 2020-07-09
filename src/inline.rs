@@ -7,6 +7,7 @@ use std::{
     mem::MaybeUninit,
     slice::{from_raw_parts, from_raw_parts_mut},
     str::{from_utf8_unchecked, from_utf8_unchecked_mut},
+    ops::{Deref, DerefMut},
 };
 
 #[cfg(target_endian = "big")]
@@ -35,6 +36,25 @@ impl<Mode: SmartStringMode> Clone for InlineString<Mode> {
 
 impl<Mode: SmartStringMode> Copy for InlineString<Mode> {}
 
+impl<Mode: SmartStringMode> Deref for InlineString<Mode> {
+    type Target = str;
+    fn deref(&self) -> &str {
+        unsafe {
+            let data = from_raw_parts(self.data.as_ref().as_ptr().cast(), self.len());
+            from_utf8_unchecked(data)
+        }
+    }
+}
+
+impl<Mode: SmartStringMode> DerefMut for InlineString<Mode> {
+    fn deref_mut(&mut self) -> &mut str {
+        unsafe {
+            let data = from_raw_parts_mut(self.data.as_mut().as_mut_ptr().cast(), self.len());
+            from_utf8_unchecked_mut(data)
+        }
+    }
+}
+
 impl<Mode: SmartStringMode> InlineString<Mode> {
     pub(crate) fn new() -> Self {
         let mut ret = Self {
@@ -44,7 +64,7 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
         };
         //Are nullptr optimizations on?
         if Mode::DEALLOC || cfg!(lazy_null_pointer_optimizations) {
-            //Initialize the 7 first or last bytes of data
+            //Initialize the 7 highest bytes of data
             for j in 0..(std::mem::size_of::<usize>() - 1) {
                 #[cfg(target_endian = "little")]
                 let j = 3*std::mem::size_of::<usize>() - 3 - j;
@@ -73,24 +93,10 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
         self.data.as_mut()
     }
 
-    pub(crate) fn as_str(&self) -> &str {
-        unsafe {
-            let data = from_raw_parts(self.data.as_ref().as_ptr().cast(), self.len());
-            from_utf8_unchecked(data)
-        }
-    }
-
-    pub(crate) fn as_mut_str(&mut self) -> &mut str {
-        unsafe {
-            let data = from_raw_parts_mut(self.data.as_mut().as_mut_ptr().cast(), self.len());
-            from_utf8_unchecked_mut(data)
-        }
-    }
-
     //Very unsafe: Caller needs to ensure that the string stays properly encoded
     //and that the string doesn't overflow
     pub(crate) unsafe fn insert_bytes(&mut self, index: usize, bytes: &[u8]) {
-        debug_assert!(self.as_str().is_char_boundary(index));
+        debug_assert!(self.is_char_boundary(index));
         debug_assert!(bytes.len() + self.len() <= Mode::MAX_INLINE);
         debug_assert!(std::str::from_utf8(bytes).is_ok());
 
@@ -113,8 +119,8 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
         let len = self.len();
         debug_assert!(start <= end);
         debug_assert!(end <= len);
-        debug_assert!(self.as_str().is_char_boundary(start));
-        debug_assert!(self.as_str().is_char_boundary(end));
+        debug_assert!(self.is_char_boundary(start));
+        debug_assert!(self.is_char_boundary(end));
         if start == end {
             return;
         }
@@ -132,8 +138,8 @@ impl<Mode: SmartStringMode> From<&'_ [u8]> for InlineString<Mode> {
         assert!(len <= Mode::MAX_INLINE);
         assert!(std::str::from_utf8(bytes).is_ok());
         let mut out = Self::new();
-        for i in 0..len {
-            out.data[i] = MaybeUninit::new(bytes[i]);
+        for (i, byte) in out.data.iter_mut().enumerate().take(len) {
+            *byte = MaybeUninit::new(bytes[i]);
         }
         unsafe {
             out.set_len(len);

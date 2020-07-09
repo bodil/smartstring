@@ -273,8 +273,7 @@ impl<Mode: SmartStringMode> Deref for SmartString<Mode> {
     fn deref(&self) -> &Self::Target {
         match self.cast() {
             StringCast::Boxed(string) => string,
-            //Todo: implement deref for inline string
-            StringCast::Inline(string) => string.as_str(),
+            StringCast::Inline(string) => string,
         }
     }
 }
@@ -289,7 +288,7 @@ impl<Mode: SmartStringMode> DerefMut for SmartString<Mode> {
             }
             Discriminant::Inline => {
                 let inline : &mut InlineString<Mode> = &mut *(self as *mut Self).cast();
-                inline.as_mut_str()
+                inline
             }
         }}
     }
@@ -309,16 +308,16 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     fn from_inline(inline: InlineString<Mode>) -> Self {
-        let ret = unsafe {
+        unsafe {
             please_transmute(inline)
-        };
-        ret
+        }
     }
 
     fn discriminant(&self) -> Discriminant {
-        match self.disc.get_full_marker() & 128 != 0 {
-            true => Discriminant::Inline,
-            false => Discriminant::Boxed,
+        if self.disc.get_full_marker() & 128 != 0 {
+            Discriminant::Inline
+        } else {
+            Discriminant::Boxed
         }
     }
 
@@ -415,7 +414,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 let len = string.len();
                 let chlen = ch.len_utf8();
                 if len + chlen > Mode::MAX_INLINE {
-                    let mut string = string.as_str().to_string();
+                    let mut string = string.to_string();
                     string.push(ch);
                     string
                 } else {
@@ -424,7 +423,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                         *e = std::mem::MaybeUninit::new(0);
                     }
                     let written = ch.encode_utf8( unsafe {
-                        std::mem::transmute(&mut string.data[len..(len + chlen)])
+                        &mut *(&mut string.data[len..(len + chlen)] as *mut [std::mem::MaybeUninit<u8>] as *mut [u8])
                     }).len();
                     unsafe { string.set_len(len + written) };
                     return;
@@ -444,12 +443,14 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             }
             StringCastMut::Inline(this) => {
                 if len + string.len() > Mode::MAX_INLINE {
-                    let mut this = this.as_str().to_string();
+                    let mut this = this.to_string();
                     this.push_str(string);
                     this
                 } else {
                     unsafe {
-                        this.as_mut_slice()[len..len + string.len()].copy_from_slice(std::mem::transmute(string.as_bytes()));
+                        this.as_mut_slice()[len..len + string.len()].copy_from_slice(
+                            &*(string.as_bytes() as *const [u8] as *const [std::mem::MaybeUninit<u8>])
+                        );
                         this.set_len(len + string.len());
                     }
                     return
@@ -512,12 +513,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(mut string) => string.truncate(new_len),
             StringCastMut::Inline(string) => {
                 if new_len < string.len() {
-                    assert!(string.as_str().is_char_boundary(new_len));
+                    assert!(string.is_char_boundary(new_len));
                     unsafe {
                         string.set_len(new_len)
                     };
                 }
-                return;
             }
         }
     }
@@ -527,7 +527,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         let result = match self.cast_mut() {
             StringCastMut::Boxed(mut string) => string.pop()?,
             StringCastMut::Inline(string) => {
-                let ch = string.as_str().chars().rev().next()?;
+                let ch = string.chars().rev().next()?;
                 unsafe {string.set_len(string.len() - ch.len_utf8());}
                 return Some(ch);
             }
@@ -539,10 +539,10 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     ///
     /// If the index doesn't fall on a UTF-8 character boundary, this method panics.
     pub fn remove(&mut self, index: usize) -> char {
-        let result = match self.cast_mut() {
+        match self.cast_mut() {
             StringCastMut::Boxed(mut string) => string.remove(index),
             StringCastMut::Inline(string) => {
-                let ch = match string.as_str()[index..].chars().next() {
+                let ch = match string[index..].chars().next() {
                     Some(ch) => ch,
                     None => panic!("cannot remove a char from the end of a string"),
                 };
@@ -552,10 +552,9 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                     string.data[index].as_mut_ptr().copy_from(string.data[next].as_ptr(), len - next);
                     string.set_len(len - (next - index));
                 }
-                return ch;
+                ch
             }
-        };
-        result
+        }
     }
 
     /// Insert a `char` into the string at the given index.
@@ -568,7 +567,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
             StringCastMut::Inline(string) if string.len() + ch.len_utf8() <= Mode::MAX_INLINE => {
-                if !string.as_str().is_char_boundary(index) {
+                if !string.is_char_boundary(index) {
                     panic!();
                 }
                 let mut buffer = [0; 4];
@@ -579,7 +578,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
             StringCastMut::Inline(string) => {
-                let mut string = string.as_str().to_string();
+                let mut string = string.to_string();
                 string.insert(index, ch);
                 string
             }
@@ -597,14 +596,14 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 return;
             }
             StringCastMut::Inline(this) if this.len() + string.len() <= Mode::MAX_INLINE => {
-                if !this.as_str().is_char_boundary(index) {
+                if !this.is_char_boundary(index) {
                     panic!();
                 }
                 unsafe {this.insert_bytes(index, string.as_bytes())};
                 return;
             },
             StringCastMut::Inline(this) => {
-                let mut this = this.as_str().to_string();
+                let mut this = this.to_string();
                 this.insert_str(index, string);
                 this
             }
@@ -622,9 +621,8 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         let result = match self.cast_mut() {
             StringCastMut::Boxed(mut string) => string.split_off(index),
             StringCastMut::Inline(string) => {
-                let s = string.as_str();
-                assert!(s.is_char_boundary(index));
-                let result = s[index..].into();
+                assert!(string.is_char_boundary(index));
+                let result = string[index..].into();
                 unsafe {
                     string.set_len(index);
                 }
@@ -656,7 +654,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 while index < len {
                     let ch = unsafe {
                         string
-                            .as_mut_str()
                             .get_unchecked(index..len)
                             .chars()
                             .next()
@@ -679,7 +676,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                         string.set_len(len - del_bytes);
                     }
                 }
-                return;
             }
         }
     }
@@ -710,12 +706,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 let (start, end) = bounds_for(&range, len);
                 assert!(end >= start);
                 assert!(end <= len);
-                assert!(string.as_str().is_char_boundary(start));
-                assert!(string.as_str().is_char_boundary(end));
+                assert!(string.is_char_boundary(start));
+                assert!(string.is_char_boundary(end));
                 let replaced_len = end - start;
                 let replace_len = replace_with.len();
                 if (len - replaced_len) + replace_len > Mode::MAX_INLINE {
-                    let mut string = string.as_str().to_string();
+                    let mut string = string.to_string();
                     string.replace_range(range, replace_with);
                     string
                 } else {
@@ -1083,7 +1079,7 @@ impl<Mode: SmartStringMode> Into<String> for SmartString<Mode> {
     fn into(self) -> String {
         match self.cast_into() {
             StringCastInto::Boxed(string) => string.into(),
-            StringCastInto::Inline(string) => string.as_str().to_string(),
+            StringCastInto::Inline(string) => string.to_string(),
         }
     }
 }

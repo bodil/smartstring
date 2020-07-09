@@ -363,6 +363,11 @@ fn assert_invariants<Mode: SmartStringMode>(control: &str, subject: &SmartString
     );
     let control_smart: SmartString<Mode> = control.into();
     assert_eq!(Ordering::Equal, subject.cmp(&control_smart));
+    if std::mem::size_of::<SmartString<Mode>>() == std::mem::size_of::<Option<SmartString<Mode>>>() {
+        let ptr : *const Option<SmartString<Mode>> = (subject as *const SmartString<Mode>).cast();
+        //Todo: should include a black box to prevent rustc from optimizing this
+        assert!(unsafe {(*ptr).is_some()});
+    }
 }
 
 pub fn test_everything<Mode: SmartStringMode>(constructor: Constructor, actions: Vec<Action>) {

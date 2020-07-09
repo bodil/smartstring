@@ -81,17 +81,21 @@ pub trait DiscriminantContainer {
     /// Return Self with the requirement that the marker is inside
     fn new(marker: u8) -> Self;
     /// Flip the highest bit of marker
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure this doesn't cause UB, for example by turning a Non-zero DiscriminantContainer into a zeroed one
     unsafe fn flip_bit(&mut self);
 }
 
 impl DiscriminantContainer for std::num::NonZeroUsize {
     fn get_full_marker(&self) -> u8 {
-        (self.get() >> (std::mem::size_of::<usize>() - 1)*8) as u8
+        (self.get() >> ((std::mem::size_of::<usize>() - 1)*8)) as u8
     }
     fn new(marker: u8) -> Self {
         unsafe {
             Self::new_unchecked(
-                ((marker as usize) << (std::mem::size_of::<usize>() - 1)*8) + 1
+                ((marker as usize) << ((std::mem::size_of::<usize>() - 1)*8)) + 1
             )
         }
     }
