@@ -108,7 +108,7 @@ impl DiscriminantContainer for std::num::NonZeroUsize {
 #[cfg(target_endian = "big")]
 #[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
-struct PossiblyZeroSize {
+pub struct PossiblyZeroSize {
     marker: u8,
     data: [MaybeUninit<u8>; std::mem::size_of::<usize>() - 1],
 }
