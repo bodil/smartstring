@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+
+## [Unreleased]
+
+### ADDED
+-   `SmartString` now supports null pointer optimizations. `Option<SmartString>` is now the same size as `SmartString`.
+-   A feature flag `lazy_null_pointer_optimizations`, which enables null pointer optimizations for `SmartString<LazyCompact>`. On by default.
+
+### FIXED
+-   `SmartString` now uses the size or capacity field to store the discriminant bit, instead of relying on pointer alignment (#4)
+-   `SmartString` doesn't rely on the internal layout of `String` (#4)
+
 ## [0.2.3] - 2020-07-07
 
 ### ADDED
