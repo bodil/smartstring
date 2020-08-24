@@ -114,9 +114,38 @@
 //! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
 //! [Arbitrary]: https://docs.rs/arbitrary/latest/arbitrary/trait.Arbitrary.html
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #![forbid(rust_2018_idioms)]
 #![deny(nonstandard_style)]
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
+
+#[cfg(not(feature = "std"))]
+extern crate core as std;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[doc(hidden)]
+pub mod lib {
+    #[cfg(not(feature = "std"))]
+    pub use alloc::string::{String, ToString};
+    #[cfg(feature = "std")]
+    pub use std::string::{String, ToString};
+
+    #[cfg(not(feature = "std"))]
+    pub use alloc::vec::Vec;
+    #[cfg(not(feature = "std"))]
+    pub use alloc::{format, vec};
+    #[cfg(feature = "std")]
+    pub use std::vec::Vec;
+
+    #[cfg(not(feature = "std"))]
+    pub use alloc::boxed::Box;
+    #[cfg(feature = "std")]
+    pub use std::boxed::Box;
+}
+use lib::*;
 
 use std::{
     borrow::{Borrow, BorrowMut},

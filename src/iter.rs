@@ -4,8 +4,12 @@ use std::{
     iter::FusedIterator,
     ops::RangeBounds,
     str::Chars,
-    string::Drain as StringDrain,
 };
+#[cfg(not(feature = "std"))]
+use alloc::string::Drain as StringDrain;
+#[cfg(feature = "std")]
+use std::string::Drain as StringDrain;
+
 
 /// A draining iterator for a [`SmartString`][SmartString].
 ///

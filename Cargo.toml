@@ -20,6 +20,8 @@ name = "smartstring"
 harness = false
 
 [features]
+default = ["std"]
+std = []
 test = ["arbitrary", "arbitrary/derive"]
 
 [dependencies]
