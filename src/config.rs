@@ -3,7 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{boxed::BoxedString, inline::InlineString, SmartString};
-use static_assertions::{assert_eq_size, const_assert, const_assert_eq};
+use static_assertions::{assert_cfg, assert_eq_size, const_assert, const_assert_eq};
 use std::mem::{align_of, size_of};
 
 /// A compact string representation equal to [`String`][String] in size with guaranteed inlining.
@@ -97,3 +97,7 @@ assert_eq_size!(String, SmartString<LazyCompact>);
 // Assert that `SmartString` is aligned correctly.
 const_assert_eq!(align_of::<String>(), align_of::<SmartString<Compact>>());
 const_assert_eq!(align_of::<String>(), align_of::<SmartString<LazyCompact>>());
+
+// This hack isn't going to work out very well on 32-bit big endian archs,
+// so let's not compile on those.
+assert_cfg!(not(all(target_endian = "big", target_pointer_width = "32")));

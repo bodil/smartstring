@@ -201,8 +201,9 @@ pub mod alias {
 /// [Compact]: struct.Compact.html
 /// [LazyCompact]: struct.LazyCompact.html
 /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
-#[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
-#[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
+#[repr(C)]
+#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
 pub struct SmartString<Mode: SmartStringMode> {
     data: MaybeUninit<InlineString<Mode>>,
 }
