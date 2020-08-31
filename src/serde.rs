@@ -1,5 +1,5 @@
 use crate::{SmartString, SmartStringMode};
-use std::{fmt, marker::PhantomData};
+use core::{fmt, marker::PhantomData};
 
 use serde::{
     de::{Error, Visitor},

@@ -20,7 +20,9 @@ name = "smartstring"
 harness = false
 
 [features]
-test = ["arbitrary", "arbitrary/derive"]
+default = ["std"]
+std = []
+test = ["std", "arbitrary", "arbitrary/derive"]
 
 [dependencies]
 static_assertions = "1.1.0"

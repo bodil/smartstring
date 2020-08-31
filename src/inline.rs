@@ -3,7 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{marker_byte::Marker, SmartStringMode};
-use std::{
+use core::{
     mem::MaybeUninit,
     slice::{from_raw_parts, from_raw_parts_mut},
     str::{from_utf8_unchecked, from_utf8_unchecked_mut},

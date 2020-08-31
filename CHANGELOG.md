@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### ADDED
+
+-   `smartstring` is now `no_std` if you disable the `std` feature flag (which is enabled by
+    default). (#10)
+
 ### FIXED
 
 -   `smartstring` will now refuse to compile on 32-bit big-endian architectures, where assuming that

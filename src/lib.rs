@@ -117,8 +117,11 @@
 #![forbid(rust_2018_idioms)]
 #![deny(nonstandard_style)]
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use std::{
+extern crate alloc;
+
+use core::{
     borrow::{Borrow, BorrowMut},
     cmp::Ordering,
     convert::Infallible,
