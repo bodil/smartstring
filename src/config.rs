@@ -3,8 +3,8 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{boxed::BoxedString, inline::InlineString, SmartString};
-use static_assertions::{assert_cfg, assert_eq_size, const_assert, const_assert_eq};
 use core::mem::{align_of, size_of};
+use static_assertions::{assert_cfg, assert_eq_size, const_assert, const_assert_eq};
 
 /// A compact string representation equal to [`String`][String] in size with guaranteed inlining.
 ///
