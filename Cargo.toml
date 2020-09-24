@@ -15,6 +15,9 @@ exclude = ["release.toml", "proptest-regressions/**"]
 [package.metadata.docs.rs]
 features = ["arbitrary", "proptest", "serde"]
 
+[badges]
+travis-ci = { repository = "bodil/smartstring", branch = "master" }
+
 [[bench]]
 name = "smartstring"
 harness = false
