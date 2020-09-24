@@ -137,6 +137,9 @@ use core::{
     str::FromStr,
 };
 
+#[cfg(feature = "std")]
+use std::borrow::Cow;
+
 mod config;
 pub use config::{Compact, LazyCompact, SmartStringMode};
 
@@ -823,6 +826,16 @@ impl<Mode: SmartStringMode> From<&'_ str> for SmartString<Mode> {
     }
 }
 
+impl<Mode: SmartStringMode> From<&'_ mut str> for SmartString<Mode> {
+    fn from(string: &'_ mut str) -> Self {
+        if string.len() > Mode::MAX_INLINE {
+            Self::from_boxed(string.to_string().into())
+        } else {
+            Self::from_inline(string.as_bytes().into())
+        }
+    }
+}
+
 impl<Mode: SmartStringMode> From<&'_ String> for SmartString<Mode> {
     fn from(string: &'_ String) -> Self {
         if string.len() > Mode::MAX_INLINE {
@@ -845,6 +858,17 @@ impl<Mode: SmartStringMode> From<String> for SmartString<Mode> {
 
 impl<Mode: SmartStringMode> From<Box<str>> for SmartString<Mode> {
     fn from(string: Box<str>) -> Self {
+        if string.len() > Mode::MAX_INLINE {
+            String::from(string).into()
+        } else {
+            Self::from(&*string)
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<Mode: SmartStringMode> From<Cow<'_, str>> for SmartString<Mode> {
+    fn from(string: Cow<'_, str>) -> Self {
         if string.len() > Mode::MAX_INLINE {
             String::from(string).into()
         } else {
