@@ -506,4 +506,22 @@ mod tests {
             SmartString::<Compact>::from("\u{323}\u{323}\u{323}ω\u{323}\u{323}\u{323}㌣\u{e323}㤘");
         s.remove(20);
     }
+
+    #[test]
+    fn string_layout_consistency_check() {
+        let mut s = String::with_capacity(5);
+        s.push_str("lol");
+        assert_eq!(3, s.len());
+        assert_eq!(5, s.capacity());
+        let ptr: *const String = &s;
+        let ptr: *const usize = ptr.cast();
+        let first_bytes = unsafe { *ptr };
+        assert_ne!(3, first_bytes);
+        assert_ne!(5, first_bytes);
+        let first_byte = unsafe { *(ptr as *const u8) };
+        #[cfg(target_endian = "little")]
+        assert_eq!(0, first_byte & 0x01);
+        #[cfg(target_endian = "big")]
+        assert_eq!(0, first_byte & 0x80);
+    }
 }
