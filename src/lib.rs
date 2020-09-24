@@ -83,6 +83,24 @@
 //! memory efficient in these cases. There will always be a slight overhead on all
 //! operations on boxed strings, compared to [`String`][String].
 //!
+//! ## Caveat
+//!
+//! The way `smartstring` gets by without a discriminant is dependent on the memory layout of the
+//! `std::string::String` struct, which isn't something the Rust compiler and standard library make any
+//! guarantees about. `smartstring` makes an assumption about how it's been laid out, which has held
+//! basically since rustc came into existence, but is nonetheless not a safe assumption to make, and if
+//! the layout ever changes, `smartstring` will stop working properly (at least on little-endian
+//! architectures, the assumptions made on big-endian archs will hold regardless of the actual memory
+//! layout). Its test suite does comprehensive validation of these assumptions, and as long as the
+//! [CI build](https://travis-ci.org/github/bodil/smartstring) is passing for any given rustc version,
+//! you can be sure it will do its job properly on all tested architectures. You can also check out the
+//! `smartstring` source tree yourself and run `cargo test` to validate it for your particular
+//! configuration.
+//!
+//! As an extra precaution, some runtime checks are made as well, so that if the memory layout
+//! assumption no longer holds, `smartstring` will not work correctly, but there should be no security
+//! implications and it should crash early.
+//!
 //! ## Feature Flags
 //!
 //! `smartstring` comes with optional support for the following crates through Cargo
