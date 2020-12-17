@@ -406,6 +406,23 @@ mod tests {
         fn proptest_ordering_lazycompact(left: String, right: String) {
             test_ordering::<LazyCompact>(left,right)
         }
+
+        #[test]
+        fn proptest_eq(left: String, right: String) {
+            fn test_eq<Mode: SmartStringMode>(left: &str, right: &str) {
+                let smart_left = SmartString::<Mode>::from(left);
+                let smart_right = SmartString::<Mode>::from(right);
+                assert_eq!(smart_left, left);
+                assert_eq!(smart_left, *left);
+                assert_eq!(smart_left, left.to_string());
+                assert_eq!(smart_left == smart_right, left == right);
+                assert_eq!(left, smart_left);
+                assert_eq!(*left, smart_left);
+                assert_eq!(left.to_string(), smart_left);
+            }
+            test_eq::<Compact>(&left, &right);
+            test_eq::<LazyCompact>(&left, &right);
+        }
     }
 
     #[test]

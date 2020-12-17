@@ -1074,6 +1074,12 @@ impl<Mode: SmartStringMode> PartialEq<str> for SmartString<Mode> {
     }
 }
 
+impl<Mode: SmartStringMode> PartialEq<&'_ str> for SmartString<Mode> {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
 impl<Mode: SmartStringMode> PartialEq<SmartString<Mode>> for &'_ str {
     fn eq(&self, other: &SmartString<Mode>) -> bool {
         other.eq(*self)
