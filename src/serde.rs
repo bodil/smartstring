@@ -1,4 +1,5 @@
 use crate::{SmartString, SmartStringMode};
+use alloc::string::String;
 use core::{fmt, marker::PhantomData};
 
 use serde::{
