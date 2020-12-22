@@ -1,4 +1,8 @@
 use crate::{SmartString, SmartStringMode};
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+};
 use arbitrary::{Arbitrary, Result, Unstructured};
 
 impl<Mode: SmartStringMode> Arbitrary for SmartString<Mode>

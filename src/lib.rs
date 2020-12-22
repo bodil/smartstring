@@ -139,6 +139,10 @@
 
 extern crate alloc;
 
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+};
 use core::{
     borrow::{Borrow, BorrowMut},
     cmp::Ordering,
