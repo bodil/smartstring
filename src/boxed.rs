@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use core::cmp::Ordering;
+use std::prelude::v1::*;
 
 pub trait BoxedString {
     fn string(&self) -> &String;

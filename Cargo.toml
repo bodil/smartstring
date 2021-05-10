@@ -24,7 +24,7 @@ harness = false
 
 [features]
 default = ["std"]
-std = []
+std = ["no-std-compat/std"]
 test = ["std", "arbitrary", "arbitrary/derive"]
 
 [dependencies]
@@ -32,6 +32,7 @@ static_assertions = "1.1.0"
 serde = { version = "1", optional = true }
 arbitrary = { version = "0.4", optional = true }
 proptest = { version = "0.10", optional = true }
+no-std-compat = { vresion = "0.4", features = ["alloc"] }
 
 [dev-dependencies]
 proptest = "0.10"

@@ -4,6 +4,7 @@ use crate::{SmartString, SmartStringMode};
 use proptest::proptest;
 use proptest::strategy::{BoxedStrategy, Strategy};
 use proptest::string::Error;
+use std::prelude::v1::*;
 
 /// Creates a strategy which generates [`SmartString`][SmartString]s matching the given regular expression.
 ///

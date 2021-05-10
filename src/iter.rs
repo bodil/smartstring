@@ -6,6 +6,7 @@ use core::{
     ops::RangeBounds,
     str::Chars,
 };
+use std::prelude::v1::*;
 
 /// A draining iterator for a [`SmartString`][SmartString].
 ///

@@ -8,6 +8,7 @@ use core::{
     slice::{from_raw_parts, from_raw_parts_mut},
     str::{from_utf8_unchecked, from_utf8_unchecked_mut},
 };
+use std::prelude::v1::*;
 
 #[repr(C)]
 pub(crate) struct InlineString<Mode: SmartStringMode> {

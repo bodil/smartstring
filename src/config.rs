@@ -5,6 +5,7 @@
 use crate::{boxed::BoxedString, inline::InlineString, SmartString};
 use core::mem::{align_of, size_of};
 use static_assertions::{assert_cfg, assert_eq_size, const_assert, const_assert_eq};
+use std::prelude::v1::*;
 
 /// A compact string representation equal to [`String`][String] in size with guaranteed inlining.
 ///

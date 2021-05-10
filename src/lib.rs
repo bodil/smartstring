@@ -139,6 +139,8 @@
 
 extern crate alloc;
 
+extern crate no_std_compat as std;
+
 use core::{
     borrow::{Borrow, BorrowMut},
     cmp::Ordering,
@@ -154,6 +156,7 @@ use core::{
     ptr::drop_in_place,
     str::FromStr,
 };
+use std::prelude::v1::*;
 
 #[cfg(feature = "std")]
 use std::borrow::Cow;

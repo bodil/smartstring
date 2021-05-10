@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{inline::InlineString, SmartStringMode};
+use std::prelude::v1::*;
 
 pub(crate) enum StringCast<'a, Mode: SmartStringMode> {
     Boxed(&'a Mode::BoxedString),

@@ -1,5 +1,6 @@
 use crate::{SmartString, SmartStringMode};
 use arbitrary::{Arbitrary, Result, Unstructured};
+use std::prelude::v1::*;
 
 impl<Mode: SmartStringMode> Arbitrary for SmartString<Mode>
 where
