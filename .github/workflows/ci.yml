@@ -15,6 +15,9 @@ jobs:
                     - stable
                     - nightly
                     - 1.43.0 # lowest supported version
+                flags:
+                    - --all-features
+                    - --no-default-features
         steps:
             - uses: actions/checkout@v2
             - uses: actions-rs/toolchain@v1
@@ -25,7 +28,7 @@ jobs:
             - uses: actions-rs/cargo@v1
               with:
                   command: check
-                  args: --all-features
+                  args: ${{ matrix.flags }}
 
     test:
         name: Tests
