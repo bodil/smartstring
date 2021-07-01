@@ -23,7 +23,7 @@
 //! as a drop-in replacement for [`String`][String], you're almost certain to see
 //! a slight performance boost, as well as slightly reduced memory usage.
 //!
-//! How To Use It?
+//! ## How To Use It?
 //!
 //! [`SmartString`][SmartString] has the exact same API as [`String`][String],
 //! all the clever bits happen automatically behind the scenes, so you could just:
