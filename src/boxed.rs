@@ -5,6 +5,7 @@
 use alloc::string::String;
 use core::cmp::Ordering;
 
+#[allow(unreachable_pub)]
 pub trait BoxedString {
     fn string(&self) -> &String;
     fn string_mut(&mut self) -> &mut String;
