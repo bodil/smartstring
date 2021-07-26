@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::{SmartString, SmartStringMode};
+use crate::{config::MAX_INLINE, SmartString, SmartStringMode};
 use std::{
     cmp::Ordering,
     fmt::Debug,
@@ -351,10 +351,10 @@ fn assert_invariants<Mode: SmartStringMode>(control: &str, subject: &SmartString
     if Mode::DEALLOC {
         assert_eq!(
             subject.is_inline(),
-            subject.len() <= Mode::MAX_INLINE,
+            subject.len() <= MAX_INLINE,
             "len {} should be inline (MAX_INLINE = {}) but was boxed",
             subject.len(),
-            Mode::MAX_INLINE
+            MAX_INLINE
         );
     }
     assert_eq!(
@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn dont_panic_when_inserting_a_string_at_exactly_inline_capacity() {
-        let string: String = (0..Compact::MAX_INLINE).map(|_| '\u{0}').collect();
+        let string: String = (0..MAX_INLINE).map(|_| '\u{0}').collect();
         test_everything::<Compact>(Constructor::New, vec![Action::InsertStr(0, string)])
     }
 

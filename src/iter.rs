@@ -23,7 +23,7 @@ where
         iter: Option<StringDrain<'a>>,
     },
     Inline {
-        string: *mut InlineString<Mode>,
+        string: *mut InlineString,
         start: usize,
         end: usize,
         iter: Chars<'a>,

@@ -53,8 +53,6 @@ pub trait SmartStringMode {
     type BoxedString: BoxedString + From<String>;
     /// The inline string type for this layout.
     type InlineArray: AsRef<[u8]> + AsMut<[u8]> + Clone + Copy;
-    /// The maximum capacity of an inline string, in bytes.
-    const MAX_INLINE: usize;
     /// A constant to decide whether to turn a wrapped string back into an inlined
     /// string whenever possible (`true`) or leave it as a wrapped string once wrapping
     /// has occurred (`false`).
@@ -64,21 +62,21 @@ pub trait SmartStringMode {
 impl SmartStringMode for Compact {
     type BoxedString = String;
     type InlineArray = [u8; size_of::<String>() - 1];
-    const MAX_INLINE: usize = size_of::<String>() - 1;
     const DEALLOC: bool = true;
 }
 
 impl SmartStringMode for LazyCompact {
     type BoxedString = String;
     type InlineArray = [u8; size_of::<String>() - 1];
-    const MAX_INLINE: usize = size_of::<String>() - 1;
     const DEALLOC: bool = false;
 }
 
+/// The maximum capacity of an inline string, in bytes.
+pub const MAX_INLINE: usize = size_of::<String>() - 1;
+
 // Assert that we're not using more space than we can encode in the header byte,
 // just in case we're on a 1024-bit architecture.
-const_assert!(<Compact as SmartStringMode>::MAX_INLINE < 128);
-const_assert!(<LazyCompact as SmartStringMode>::MAX_INLINE < 128);
+const_assert!(MAX_INLINE < 128);
 
 // Assert that all the structs are of the expected size.
 assert_eq_size!(
@@ -89,8 +87,8 @@ assert_eq_size!(
     <LazyCompact as SmartStringMode>::BoxedString,
     SmartString<LazyCompact>
 );
-assert_eq_size!(InlineString<Compact>, SmartString<Compact>);
-assert_eq_size!(InlineString<LazyCompact>, SmartString<LazyCompact>);
+assert_eq_size!(InlineString, SmartString<Compact>);
+assert_eq_size!(InlineString, SmartString<LazyCompact>);
 
 assert_eq_size!(String, SmartString<Compact>);
 assert_eq_size!(String, SmartString<LazyCompact>);

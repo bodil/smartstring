@@ -16,7 +16,7 @@ pub(crate) enum Discriminant {
 
 impl Discriminant {
     #[inline(always)]
-    fn from_bit(bit: bool) -> Self {
+    const fn from_bit(bit: bool) -> Self {
         if bit {
             Self::Inline
         } else {
@@ -25,7 +25,7 @@ impl Discriminant {
     }
 
     #[inline(always)]
-    fn bit(self) -> u8 {
+    const fn bit(self) -> u8 {
         match self {
             Self::Boxed => 0,
             Self::Inline => 1,
@@ -38,7 +38,7 @@ pub(crate) struct Marker(u8);
 
 impl Marker {
     #[inline(always)]
-    fn assemble(discriminant: Discriminant, data: u8) -> u8 {
+    const fn assemble(discriminant: Discriminant, data: u8) -> u8 {
         let data = data;
         if UPSIDE_DOWN_LAND {
             data << 1 | discriminant.bit()
@@ -47,13 +47,23 @@ impl Marker {
         }
     }
 
-    pub(crate) fn new_inline(data: u8) -> Self {
-        debug_assert!(data < 0x80);
-        Self(Self::assemble(Discriminant::Inline, data))
+    #[inline(always)]
+    pub(crate) const fn empty() -> Self {
+        Self(Self::assemble(Discriminant::Inline, 0))
     }
 
     #[inline(always)]
-    pub(crate) fn discriminant(self) -> Discriminant {
+    pub(crate) const unsafe fn new_inline_unsafe(data: u8) -> Self {
+        Self(Self::assemble(Discriminant::Inline, data))
+    }
+
+    pub(crate) fn new_inline(data: u8) -> Self {
+        debug_assert!(data < 0x80);
+        unsafe { Self::new_inline_unsafe(data) }
+    }
+
+    #[inline(always)]
+    pub(crate) const fn discriminant(self) -> Discriminant {
         Discriminant::from_bit(if UPSIDE_DOWN_LAND {
             self.0 & 0x01 != 0
         } else {
@@ -62,7 +72,7 @@ impl Marker {
     }
 
     #[inline(always)]
-    pub(crate) fn data(self) -> u8 {
+    pub(crate) const fn data(self) -> u8 {
         if UPSIDE_DOWN_LAND {
             self.0 >> 1
         } else {

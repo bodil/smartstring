@@ -6,15 +6,15 @@ use crate::{inline::InlineString, SmartStringMode};
 
 pub(crate) enum StringCast<'a, Mode: SmartStringMode> {
     Boxed(&'a Mode::BoxedString),
-    Inline(&'a InlineString<Mode>),
+    Inline(&'a InlineString),
 }
 
 pub(crate) enum StringCastMut<'a, Mode: SmartStringMode> {
     Boxed(&'a mut Mode::BoxedString),
-    Inline(&'a mut InlineString<Mode>),
+    Inline(&'a mut InlineString),
 }
 
 pub(crate) enum StringCastInto<Mode: SmartStringMode> {
     Boxed(Mode::BoxedString),
-    Inline(InlineString<Mode>),
+    Inline(InlineString),
 }

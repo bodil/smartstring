@@ -150,6 +150,7 @@ use core::{
     fmt::{Debug, Display, Error, Formatter, Write},
     hash::{Hash, Hasher},
     iter::FromIterator,
+    marker::PhantomData,
     mem::{forget, MaybeUninit},
     ops::{
         Add, Bound, Deref, DerefMut, Index, IndexMut, Range, RangeBounds, RangeFrom, RangeFull,
@@ -163,7 +164,7 @@ use core::{
 use std::borrow::Cow;
 
 mod config;
-pub use config::{Compact, LazyCompact, SmartStringMode};
+pub use config::{Compact, LazyCompact, SmartStringMode, MAX_INLINE};
 
 mod marker_byte;
 use marker_byte::{Discriminant, Marker};
@@ -233,7 +234,8 @@ pub mod alias {
 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
 pub struct SmartString<Mode: SmartStringMode> {
-    data: MaybeUninit<InlineString<Mode>>,
+    data: MaybeUninit<InlineString>,
+    mode: PhantomData<Mode>,
 }
 
 impl<Mode: SmartStringMode> Drop for SmartString<Mode> {
@@ -282,6 +284,36 @@ impl<Mode: SmartStringMode> DerefMut for SmartString<Mode> {
     }
 }
 
+impl SmartString<LazyCompact> {
+    /// Construct an empty string.
+    ///
+    /// This is a `const fn` version of [`SmartString::new`].
+    /// It's a temporary measure while we wait for trait bounds on
+    /// type arguments to `const fn`s to stabilise, and will be deprecated
+    /// once this happens.
+    pub const fn new_const() -> Self {
+        Self {
+            data: MaybeUninit::new(InlineString::new()),
+            mode: PhantomData,
+        }
+    }
+}
+
+impl SmartString<Compact> {
+    /// Construct an empty string.
+    ///
+    /// This is a `const fn` version of [`SmartString::new`].
+    /// It's a temporary measure while we wait for trait bounds on
+    /// type arguments to `const fn`s to stabilise, and will be deprecated
+    /// once this happens.
+    pub const fn new_const() -> Self {
+        Self {
+            data: MaybeUninit::new(InlineString::new()),
+            mode: PhantomData,
+        }
+    }
+}
+
 impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Construct an empty string.
     #[inline(always)]
@@ -292,15 +324,17 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     fn from_boxed(boxed: Mode::BoxedString) -> Self {
         let mut out = Self {
             data: MaybeUninit::uninit(),
+            mode: PhantomData,
         };
         let data_ptr: *mut Mode::BoxedString = out.data.as_mut_ptr().cast();
         unsafe { data_ptr.write(boxed) };
         out
     }
 
-    fn from_inline(inline: InlineString<Mode>) -> Self {
+    fn from_inline(inline: InlineString) -> Self {
         let mut out = Self {
             data: MaybeUninit::uninit(),
+            mode: PhantomData,
         };
         unsafe { out.data.as_mut_ptr().write(inline) };
         out
@@ -360,7 +394,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Attempt to inline the string regardless of whether `Mode::DEALLOC` is set.
     fn really_try_demote(&mut self) -> bool {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
-            if string.len() > Mode::MAX_INLINE {
+            if string.len() > MAX_INLINE {
                 false
             } else {
                 let inlined = string.string().as_bytes().into();
@@ -413,7 +447,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Inline(string) => {
                 let len = string.len();
                 let new_len = len + ch.len_utf8();
-                if new_len > Mode::MAX_INLINE {
+                if new_len > MAX_INLINE {
                     let mut new_str = String::with_capacity(new_len);
                     new_str.push_str(string.as_str());
                     new_str.push(ch);
@@ -433,7 +467,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(this) => this.string_mut().push_str(string),
             StringCastMut::Inline(this) => {
                 let new_len = len + string.len();
-                if new_len > Mode::MAX_INLINE {
+                if new_len > MAX_INLINE {
                     let mut new_str = String::with_capacity(new_len);
                     new_str.push_str(this.as_str());
                     new_str.push_str(string);
@@ -461,7 +495,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         if let StringCast::Boxed(string) = self.cast() {
             string.string().capacity()
         } else {
-            Mode::MAX_INLINE
+            MAX_INLINE
         }
     }
 
@@ -479,7 +513,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// [len]: struct.SmartString.html#method.len
     pub fn shrink_to_fit(&mut self) {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
-            if string.len() > Mode::MAX_INLINE {
+            if string.len() > MAX_INLINE {
                 string.string_mut().shrink_to_fit();
             }
         }
@@ -554,7 +588,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(string) => {
                 string.string_mut().insert(index, ch);
             }
-            StringCastMut::Inline(string) if string.len() + ch.len_utf8() <= Mode::MAX_INLINE => {
+            StringCastMut::Inline(string) if string.len() + ch.len_utf8() <= MAX_INLINE => {
                 let mut buffer = [0; 4];
                 let buffer = ch.encode_utf8(&mut buffer).as_bytes();
                 string.insert_bytes(index, buffer);
@@ -575,7 +609,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             StringCastMut::Boxed(this) => {
                 this.string_mut().insert_str(index, string);
             }
-            StringCastMut::Inline(this) if this.len() + string.len() <= Mode::MAX_INLINE => {
+            StringCastMut::Inline(this) if this.len() + string.len() <= MAX_INLINE => {
                 this.insert_bytes(index, string.as_bytes());
             }
             _ => {
@@ -685,7 +719,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 assert!(string.as_str().is_char_boundary(end));
                 let replaced_len = end - start;
                 let replace_len = replace_with.len();
-                if (len - replaced_len) + replace_len > Mode::MAX_INLINE {
+                if (len - replaced_len) + replace_len > MAX_INLINE {
                     let mut string = string.as_str().to_string();
                     string.replace_range(range, replace_with);
                     self.promote_from(string);
@@ -840,7 +874,7 @@ impl<Mode: SmartStringMode> IndexMut<RangeToInclusive<usize>> for SmartString<Mo
 
 impl<Mode: SmartStringMode> From<&'_ str> for SmartString<Mode> {
     fn from(string: &'_ str) -> Self {
-        if string.len() > Mode::MAX_INLINE {
+        if string.len() > MAX_INLINE {
             Self::from_boxed(string.to_string().into())
         } else {
             Self::from_inline(string.as_bytes().into())
@@ -850,7 +884,7 @@ impl<Mode: SmartStringMode> From<&'_ str> for SmartString<Mode> {
 
 impl<Mode: SmartStringMode> From<&'_ mut str> for SmartString<Mode> {
     fn from(string: &'_ mut str) -> Self {
-        if string.len() > Mode::MAX_INLINE {
+        if string.len() > MAX_INLINE {
             Self::from_boxed(string.to_string().into())
         } else {
             Self::from_inline(string.as_bytes().into())
@@ -860,7 +894,7 @@ impl<Mode: SmartStringMode> From<&'_ mut str> for SmartString<Mode> {
 
 impl<Mode: SmartStringMode> From<&'_ String> for SmartString<Mode> {
     fn from(string: &'_ String) -> Self {
-        if string.len() > Mode::MAX_INLINE {
+        if string.len() > MAX_INLINE {
             Self::from_boxed(string.clone().into())
         } else {
             Self::from_inline(string.as_bytes().into())
@@ -870,7 +904,7 @@ impl<Mode: SmartStringMode> From<&'_ String> for SmartString<Mode> {
 
 impl<Mode: SmartStringMode> From<String> for SmartString<Mode> {
     fn from(string: String) -> Self {
-        if string.len() > Mode::MAX_INLINE {
+        if string.len() > MAX_INLINE {
             Self::from_boxed(string.into())
         } else {
             Self::from_inline(string.as_bytes().into())
@@ -880,7 +914,7 @@ impl<Mode: SmartStringMode> From<String> for SmartString<Mode> {
 
 impl<Mode: SmartStringMode> From<Box<str>> for SmartString<Mode> {
     fn from(string: Box<str>) -> Self {
-        if string.len() > Mode::MAX_INLINE {
+        if string.len() > MAX_INLINE {
             String::from(string).into()
         } else {
             Self::from(&*string)
@@ -891,7 +925,7 @@ impl<Mode: SmartStringMode> From<Box<str>> for SmartString<Mode> {
 #[cfg(feature = "std")]
 impl<Mode: SmartStringMode> From<Cow<'_, str>> for SmartString<Mode> {
     fn from(string: Cow<'_, str>) -> Self {
-        if string.len() > Mode::MAX_INLINE {
+        if string.len() > MAX_INLINE {
             String::from(string).into()
         } else {
             Self::from(&*string)

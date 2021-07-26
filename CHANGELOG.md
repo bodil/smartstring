@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### ADDED
+
+-   There are now `const fn new_const()` constructors for `SmartString<Compact>` and
+    `SmartString<LazyCompact>`, added as a temporary measure because const functions can't yet take
+    trait bounds on type arguments, so we can't simply make `SmartString::new()` const.
+
+    Please note that when rustc catches up, the plan is to deprecate `new_const()` in favour of
+    `new()`.
+
 ## [0.2.7] - 2021-07-01
 
 ### FIXED

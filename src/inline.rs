@@ -2,32 +2,31 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::{marker_byte::Marker, SmartStringMode};
+use crate::{config::MAX_INLINE, marker_byte::Marker};
 use core::{
-    mem::MaybeUninit,
     slice::{from_raw_parts, from_raw_parts_mut},
     str::{from_utf8_unchecked, from_utf8_unchecked_mut},
 };
 
 #[repr(C)]
-pub(crate) struct InlineString<Mode: SmartStringMode> {
+pub(crate) struct InlineString {
     pub(crate) marker: Marker,
-    pub(crate) data: Mode::InlineArray,
+    pub(crate) data: [u8; MAX_INLINE],
 }
 
-impl<Mode: SmartStringMode> Clone for InlineString<Mode> {
+impl Clone for InlineString {
     fn clone(&self) -> Self {
         unreachable!("InlineString should be copy!")
     }
 }
 
-impl<Mode: SmartStringMode> Copy for InlineString<Mode> {}
+impl Copy for InlineString {}
 
-impl<Mode: SmartStringMode> InlineString<Mode> {
-    pub(crate) fn new() -> Self {
+impl InlineString {
+    pub(crate) const fn new() -> Self {
         Self {
-            marker: Marker::new_inline(0),
-            data: unsafe { MaybeUninit::zeroed().assume_init() },
+            marker: Marker::empty(),
+            data: [0; MAX_INLINE],
         }
     }
 
@@ -39,7 +38,7 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
         let len = self.marker.data() as usize;
         // Panic immediately if inline length is too high, which suggests
         // assumptions made about `String`'s memory layout are invalid.
-        assert!(len <= Mode::MAX_INLINE);
+        assert!(len <= MAX_INLINE);
         len
     }
 
@@ -102,10 +101,10 @@ impl<Mode: SmartStringMode> InlineString<Mode> {
     }
 }
 
-impl<Mode: SmartStringMode> From<&'_ [u8]> for InlineString<Mode> {
+impl From<&'_ [u8]> for InlineString {
     fn from(bytes: &[u8]) -> Self {
         let len = bytes.len();
-        debug_assert!(len <= Mode::MAX_INLINE);
+        debug_assert!(len <= MAX_INLINE);
         let mut out = Self::new();
         out.marker = Marker::new_inline(len as u8);
         out.data.as_mut()[..len].copy_from_slice(bytes);
