@@ -14,7 +14,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
     trait bounds on type arguments, so we can't simply make `SmartString::new()` const.
 
     Please note that when rustc catches up, the plan is to deprecate `new_const()` in favour of
-    `new()`.
+    `new()`. (#21)
 
 ## [0.2.7] - 2021-07-01
 
