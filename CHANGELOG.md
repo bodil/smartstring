@@ -7,6 +7,10 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### CHANGED
+
+-   The minimum supported rustc version has been increased to 1.46.0.
+
 ### ADDED
 
 -   There are now `const fn new_const()` constructors for `SmartString<Compact>` and
