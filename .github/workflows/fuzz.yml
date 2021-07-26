@@ -40,8 +40,8 @@ jobs:
           crate: cargo-fuzz
           version: latest
           use-tool-cache: true
-      - name: Fuzz for 5 minutes
-        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=300 # seconds
+      - name: Fuzz for 2 minutes
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=120 # seconds
       - uses: actions/upload-artifact@v1
         name: Publish artifacts
         if: always()
