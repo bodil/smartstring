@@ -7,9 +7,7 @@ use core::{
     str::Chars,
 };
 
-/// A draining iterator for a [`SmartString`][SmartString].
-///
-/// [SmartString]: struct.SmartString.html
+/// A draining iterator for a [`SmartString`].
 pub struct Drain<'a, Mode>(DrainCast<'a, Mode>)
 where
     Mode: SmartStringMode;

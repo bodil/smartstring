@@ -4,28 +4,40 @@
 
 //! # Smart String
 //!
-//! [`SmartString`][SmartString] is a wrapper around [`String`][String] which offers
+//! [`SmartString`] is a wrapper around [`String`] which offers
 //! automatic inlining of small strings. It comes in two flavours:
-//! [`LazyCompact`][LazyCompact], which takes up exactly as much space as a [`String`][String]
-//! and is generally a little faster, and [`Compact`][Compact], which is the same as
-//! [`LazyCompact`][LazyCompact] except it will aggressively re-inline any expanded
-//! [`String`][String]s which become short enough to do so.
-//! [`LazyCompact`][LazyCompact] is the default.
+//! [`LazyCompact`], which takes up exactly as much space as a [`String`]
+//! and is generally a little faster, and [`Compact`], which is the same as
+//! [`LazyCompact`] except it will aggressively re-inline any expanded
+//! [`String`]s which become short enough to do so.
+//! [`LazyCompact`] is the default.
 //!
 //! ## What Is It For?
 //!
-//! The intended use for [`SmartString`][SmartString] is as a key type for a
-//! B-tree (such as [`std::collections::BTreeMap`][BTreeMap]) or any kind of
+//! The intended use for [`SmartString`] is as a key type for a
+//! B-tree (such as [`std::collections::BTreeMap`]) or any kind of
 //! array operation where cache locality is critical.
 //!
 //! In general, it's a nice data type for reducing your heap allocations and
-//! increasing the locality of string data. If you use [`SmartString`][SmartString]
-//! as a drop-in replacement for [`String`][String], you're almost certain to see
+//! increasing the locality of string data. If you use [`SmartString`]
+//! as a drop-in replacement for [`String`], you're almost certain to see
 //! a slight performance boost, as well as slightly reduced memory usage.
 //!
 //! ## How To Use It?
 //!
-//! [`SmartString`][SmartString] has the exact same API as [`String`][String],
+//! Before using [`SmartString`], you should always call
+//! [`smartstring::validate()`][validate], to make sure [`SmartString`] is safe to use.
+//! Ideally, you should call it at the start of your `main()` function, and
+//! from your test suite. [`SmartString`] will also attempt to crash early if
+//! inconsistencies are detected, but this isn't foolproof.
+//!
+//! ```rust
+//! fn main() {
+//!     smartstring::validate();
+//! }
+//! ```
+//!
+//! [`SmartString`] has the exact same API as [`String`],
 //! all the clever bits happen automatically behind the scenes, so you could just:
 //!
 //! ```rust
@@ -41,34 +53,34 @@
 //!
 //! ## Give Me The Details
 //!
-//! [`SmartString`][SmartString] is the same size as [`String`][String] and
+//! [`SmartString`] is the same size as [`String`] and
 //! relies on pointer alignment to be able to store a discriminant bit in its
-//! inline form that will never be present in its [`String`][String] form, thus
+//! inline form that will never be present in its [`String`] form, thus
 //! giving us 24 bytes (on 64-bit architectures) minus one bit to encode our
 //! inline string. It uses 23 bytes to store the string data and the remaining
 //! 7 bits to encode the string's length. When the available space is exceeded,
-//! it swaps itself out with a [`String`][String] containing its previous
+//! it swaps itself out with a [`String`] containing its previous
 //! contents. Likewise, if the string's length should drop below its inline
 //! capacity again, it deallocates the string and moves its contents inline.
 //!
 //! Given that we use the knowledge that a certain bit in the memory layout
-//! of [`String`][String] will always be unset as a discriminant, you would be
-//! able to call [`std::mem::transmute::<String>()`][transmute] on a boxed
-//! smart string and start using it as a normal [`String`][String] immediately -
+//! of [`String`] will always be unset as a discriminant, you would be
+//! able to call [`std::mem::transmute::<String>()`][std::mem::transmute] on a boxed
+//! smart string and start using it as a normal [`String`] immediately -
 //! there's no pointer tagging or similar trickery going on here.
 //! (But please don't do that, there's an efficient [`Into<String>`][IntoString]
 //! implementation that does the exact same thing with no need to go unsafe
 //! in your own code.)
 //!
-//! It is aggressive about inlining strings, meaning that if you modify a heap allocated
+//! In [`Compact`] mode, it is aggressive about inlining strings, meaning that if you modify a heap allocated
 //! string such that it becomes short enough for inlining, it will be inlined immediately
-//! and the allocated [`String`][String] will be dropped. This may cause multiple
+//! and the allocated [`String`] will be dropped. This may cause multiple
 //! unintended allocations if you repeatedly adjust your string's length across the
 //! inline capacity threshold, so if your string's construction can get
 //! complicated and you're relying on performance during construction, it might be better
-//! to construct it as a [`String`][String] and convert it once construction is done.
+//! to construct it as a [`String`] and convert it once construction is done.
 //!
-//! [`LazyCompact`][LazyCompact] looks the same as [`Compact`][Compact], except
+//! [`LazyCompact`] looks the same as [`Compact`], except
 //! it never re-inlines a string that's already been heap allocated, instead
 //! keeping the allocation around in case it needs it. This makes for less
 //! cache local strings, but is the best choice if you're more worried about
@@ -76,26 +88,26 @@
 //!
 //! ## Performance
 //!
-//! It doesn't aim to be more performant than [`String`][String] in the general case,
+//! It doesn't aim to be more performant than [`String`] in the general case,
 //! except that it doesn't trigger heap allocations for anything shorter than
 //! its inline capacity and so can be reasonably expected to exceed
-//! [`String`][String]'s performance perceptibly on shorter strings, as well as being more
+//! [`String`]'s performance perceptibly on shorter strings, as well as being more
 //! memory efficient in these cases. There will always be a slight overhead on all
-//! operations on boxed strings, compared to [`String`][String].
+//! operations on boxed strings, compared to [`String`].
 //!
 //! ## Caveat
 //!
 //! The way `smartstring` gets by without a discriminant is dependent on the memory layout of the
-//! `std::string::String` struct, which isn't something the Rust compiler and standard library make any
+//! [`std::string::String`] struct, which isn't something the Rust compiler and standard library make any
 //! guarantees about. `smartstring` makes an assumption about how it's been laid out, which has held
 //! basically since rustc came into existence, but is nonetheless not a safe assumption to make, and if
 //! the layout ever changes, `smartstring` will stop working properly (at least on little-endian
 //! architectures, the assumptions made on big-endian archs will hold regardless of the actual memory
 //! layout). Its test suite does comprehensive validation of these assumptions, and as long as the
 //! [CI build](https://travis-ci.org/github/bodil/smartstring) is passing for any given rustc version,
-//! you can be sure it will do its job properly on all tested architectures. You can also check out the
-//! `smartstring` source tree yourself and run `cargo test` to validate it for your particular
-//! configuration.
+//! you can be sure it will do its job properly on all tested architectures. More directly, as mentioned
+//! above, you should always call [`smartstring::validate()`][validate] before using [`SmartString`] to
+//! remove any doubt.
 //!
 //! As an extra precaution, some runtime checks are made as well, so that if the memory layout
 //! assumption no longer holds, `smartstring` will not work correctly, but there should be no security
@@ -113,20 +125,11 @@
 //!
 //! | Feature | Description |
 //! | ------- | ----------- |
-//! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`][SmartString]. |
-//! | [`proptest`](https://crates.io/crates/proptest) | A strategy for generating [`SmartString`][SmartString]s from a regular expression. |
-//! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`][SmartString]. |
+//! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`]. |
+//! | [`proptest`](https://crates.io/crates/proptest) | A strategy for generating [`SmartString`]s from a regular expression. |
+//! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`]. |
 //!
-//! [SmartString]: struct.SmartString.html
-//! [LazyCompact]: struct.LazyCompact.html
-//! [Compact]: struct.Compact.html
 //! [IntoString]: struct.SmartString.html#impl-Into%3CString%3E
-//! [String]: https://doc.rust-lang.org/std/string/struct.String.html
-//! [BTreeMap]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
-//! [eq]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html#tymethod.eq
-//! [cmp]: https://doc.rust-lang.org/std/cmp/trait.Ord.html#tymethod.cmp
-//! [transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
-//! [tinystr]: https://crates.io/crates/tinystr
 //! [serde]: https://crates.io/crates/serde
 //! [Serialize]: https://docs.rs/serde/latest/serde/trait.Serialize.html
 //! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
@@ -190,22 +193,60 @@ mod arbitrary;
 #[cfg(feature = "proptest")]
 pub mod proptest;
 
+/// Validate the crate's assumptions about [`String`] memory layout.
+///
+/// Because [`SmartString`] makes some assumptions about how [`String`] is
+/// laid out in memory that rustc does not actually guarantee, you should
+/// always run this function in your target environment before using
+/// [`SmartString`], ideally at the start of your application's `main()`
+/// function, so your application will crash as early as possible without
+/// any security risks. You should also run it as part of your application's
+/// test suite, to catch problems before runtime.
+///
+/// If the assumptions don't hold, this function will panic.
+///
+/// # Example
+///
+/// ```
+/// fn main() {
+///     smartstring::validate();
+/// }
+/// ```
+pub fn validate() {
+    let mut s = String::with_capacity(5);
+    s.push_str("lol");
+    assert_eq!(3, s.len(), "SmartString memory layout check failed");
+    assert_eq!(5, s.capacity(), "SmartString memory layout check failed");
+    let ptr: *const String = &s;
+    let ptr: *const usize = ptr.cast();
+    let first_bytes = unsafe { *ptr };
+    assert_ne!(3, first_bytes, "SmartString memory layout check failed");
+    assert_ne!(5, first_bytes, "SmartString memory layout check failed");
+    let first_byte = unsafe { *(ptr as *const u8) };
+    #[cfg(target_endian = "little")]
+    assert_eq!(
+        0,
+        first_byte & 0x01,
+        "SmartString memory layout check failed"
+    );
+    #[cfg(target_endian = "big")]
+    assert_eq!(
+        0,
+        first_byte & 0x80,
+        "SmartString memory layout check failed"
+    );
+}
+
 /// Convenient type aliases.
 pub mod alias {
     use super::*;
 
-    /// A convenience alias for a [`LazyCompact`][LazyCompact] layout [`SmartString`][SmartString].
+    /// A convenience alias for a [`LazyCompact`] layout [`SmartString`].
     ///
     /// Just pretend it's a [`String`][String]!
-    ///
-    /// [SmartString]: struct.SmartString.html
-    /// [LazyCompact]: struct.LazyCompact.html
     pub type String = SmartString<LazyCompact>;
 
-    /// A convenience alias for a [`Compact`][Compact] layout [`SmartString`][SmartString].
-    ///
-    /// [SmartString]: struct.SmartString.html
-    /// [Compact]: struct.Compact.html
+    /// A convenience alias for a [`Compact`] layout [`SmartString`].
     pub type CompactString = SmartString<Compact>;
 }
 
@@ -214,9 +255,9 @@ pub mod alias {
 /// This wraps one of two string types: an inline string or a boxed string.
 /// Conversion between the two happens opportunistically and transparently.
 ///
-/// It takes a layout as its type argument: one of [`Compact`][Compact] or [`LazyCompact`][LazyCompact].
+/// It takes a layout as its type argument: one of [`Compact`] or [`LazyCompact`].
 ///
-/// It mimics the interface of [`String`][String] except where behaviour cannot
+/// It mimics the interface of [`String`] except where behaviour cannot
 /// be guaranteed to stay consistent between its boxed and inline states. This means
 /// you still have `capacity()` and `shrink_to_fit()`, relating to state that only
 /// really exists in the boxed variant, because the inline variant can still give
@@ -225,11 +266,6 @@ pub mod alias {
 /// state changes wouldn't carry over if the inline string is promoted to a boxed
 /// one - not without also storing that state in the inline representation, which
 /// would waste precious bytes for inline string data.
-///
-/// [SmartString]: struct.SmartString.html
-/// [Compact]: struct.Compact.html
-/// [LazyCompact]: struct.LazyCompact.html
-/// [String]: https://doc.rust-lang.org/std/string/struct.String.html
 #[repr(C)]
 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
@@ -247,13 +283,10 @@ impl<Mode: SmartStringMode> Drop for SmartString<Mode> {
 }
 
 impl<Mode: SmartStringMode> Clone for SmartString<Mode> {
-    /// Clone a `SmartString`.
+    /// Clone a [`SmartString`].
     ///
-    /// If the string is inlined, this is a [`Copy`][Copy] operation. Otherwise,
+    /// If the string is inlined, this is a [`Copy`] operation. Otherwise,
     /// [`String::clone()`][String::clone] is invoked.
-    ///
-    /// [String::clone]: https://doc.rust-lang.org/std/string/struct.String.html#impl-Clone
-    /// [Copy]: https://doc.rust-lang.org/std/marker/trait.Copy.html
     fn clone(&self) -> Self {
         match self.cast() {
             StringCast::Boxed(string) => Self::from_boxed(string.string().clone().into()),
@@ -332,12 +365,10 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     fn from_inline(inline: InlineString) -> Self {
-        let mut out = Self {
-            data: MaybeUninit::uninit(),
+        Self {
+            data: MaybeUninit::new(inline),
             mode: PhantomData,
-        };
-        unsafe { out.data.as_mut_ptr().write(inline) };
-        out
+        }
     }
 
     fn discriminant(&self) -> Discriminant {
@@ -483,14 +514,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Return the currently allocated capacity of the string.
     ///
     /// Note that if this is a boxed string, it returns [`String::capacity()`][String::capacity],
-    /// but an inline string always returns [`SmartStringMode::MAX_INLINE`][MAX_INLINE].
+    /// but an inline string always returns [`MAX_INLINE`].
     ///
     /// Note also that if a boxed string is converted into an inline string, its capacity is
     /// deallocated, and if the inline string is promoted to a boxed string in the future,
     /// it will be reallocated with a default capacity.
-    ///
-    /// [MAX_INLINE]: trait.SmartStringMode.html#associatedconstant.MAX_INLINE
-    /// [String::capacity]: https://doc.rust-lang.org/std/string/struct.String.html#method.capacity
     pub fn capacity(&self) -> usize {
         if let StringCast::Boxed(string) = self.cast() {
             string.string().capacity()
@@ -502,15 +530,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// Shrink the capacity of the string to fit its contents exactly.
     ///
     /// This has no effect on inline strings, which always have a fixed capacity.
-    /// Thus, it's not safe to assume that [`capacity()`][capacity] will
-    /// equal [`len()`][len] after calling this.
+    /// Thus, it's not safe to assume that [`capacity()`][SmartString::capacity] will
+    /// equal [`len()`][SmartString::len] after calling this.
     ///
-    /// Calling this on a [`LazyCompact`][LazyCompact] string that is currently
+    /// Calling this on a [`LazyCompact`] string that is currently
     /// heap allocated but is short enough to be inlined will deallocate the
     /// heap allocation and convert it to an inline string.
-    ///
-    /// [capacity]: struct.SmartString.html#method.capacity
-    /// [len]: struct.SmartString.html#method.len
     pub fn shrink_to_fit(&mut self) {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
             if string.len() > MAX_INLINE {
