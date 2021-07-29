@@ -25,7 +25,7 @@ if it had never been a `SmartString`. (But please don't do that, there's an `Int
 implementation that's much safer.)
 
 ## Supported architectures
-`smartstring` currently doesn't build on 32-bit big endian architectures like `powerpc`, so its use
+`smartstring` currently doesn't run on 32-bit big endian architectures like `powerpc`, so its use
 in any crates that intend to run on those architectures should ideally be gated behind a
 [platform specific dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#platform-specific-dependencies)
 in your `Cargo.toml`, like so:
