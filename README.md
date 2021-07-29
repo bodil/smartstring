@@ -24,6 +24,19 @@ when not inlined it's pointer compatible with `String`, meaning that you can saf
 if it had never been a `SmartString`. (But please don't do that, there's an `Into<String>`
 implementation that's much safer.)
 
+## Supported architectures
+`smartstring` currently doesn't build on 32-bit big endian architectures like `powerpc`, so its use
+in any crates that intend to run on those architectures should ideally be gated behind a
+[platform specific dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#platform-specific-dependencies)
+in your `Cargo.toml`, like so:
+```toml
+[target.'cfg(not(all(target_endian = "big", target_pointer_width = "32")))'.dependencies]
+smartstring = "0.2"
+```
+
+This will ensure that `cargo` does not try to build `smartstring` on these unsupported
+architectures, which will otherwise [always fail](https://github.com/bodil/smartstring/blob/v0.2.9/src/config.rs#L91-L93).
+
 ## Caveat
 
 The way `smartstring` gets by without a discriminant is dependent on the memory layout of the
