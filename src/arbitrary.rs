@@ -5,7 +5,7 @@ use alloc::{
 };
 use arbitrary::{Arbitrary, Result, Unstructured};
 
-impl<Mode: SmartStringMode> Arbitrary for SmartString<Mode>
+impl<'a, Mode: SmartStringMode> Arbitrary<'a> for SmartString<Mode>
 where
     Mode: 'static,
 {
@@ -21,7 +21,7 @@ where
         String::size_hint(depth)
     }
 
-    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(self.to_string().shrink().map(Self::from))
-    }
+    // fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+    //     Box::new(self.to_string().shrink().map(Self::from))
+    // }
 }
