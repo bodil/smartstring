@@ -20,8 +20,4 @@ where
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         String::size_hint(depth)
     }
-
-    // fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-    //     Box::new(self.to_string().shrink().map(Self::from))
-    // }
 }
