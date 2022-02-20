@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### CHANGED
+
+-   The minimum supported rustc version has been increased to 1.56.0, and the `rust-version` field
+    has been added to the crate's `Cargo.toml` to indicate the MSRV. (The `rust-version` field
+    itself was introduced in version 1.56, hence the bump.)
+-   Dependencies have been bumped, most notably to `arbitrary` version 1.
+
 ## [0.2.9] - 2021-07-27
 
 ### ADDED
