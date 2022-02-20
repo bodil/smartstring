@@ -9,8 +9,8 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.3"
-arbitrary = "0.4"
+libfuzzer-sys = "0.4"
+arbitrary = "1"
 
 [dependencies.smartstring]
 path = ".."

@@ -2,7 +2,7 @@
 name = "smartstring"
 version = "0.2.9"
 authors = ["Bodil Stokke <bodil@bodil.org>"]
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0+"
 description = "Compact inlined strings"
 repository = "https://github.com/bodil/smartstring"
@@ -11,6 +11,7 @@ readme = "./README.md"
 categories = ["data-structures"]
 keywords = ["cache-local", "cpu-cache", "small-string", "sso", "inline-string"]
 exclude = ["release.toml", "proptest-regressions/**"]
+rust-version = "1.56"
 
 [package.metadata.docs.rs]
 features = ["arbitrary", "proptest", "serde"]
@@ -28,14 +29,14 @@ std = []
 test = ["std", "arbitrary", "arbitrary/derive"]
 
 [dependencies]
-static_assertions = "1.1.0"
+static_assertions = "1"
 serde = { version = "1", optional = true }
-arbitrary = { version = "1.1.0", optional = true }
-proptest = { version = "0.10", optional = true }
+arbitrary = { version = "1", optional = true }
+proptest = { version = "1", optional = true }
 
 [dev-dependencies]
-proptest = "0.10"
-proptest-derive = "0.2"
-criterion = "0.3.2"
-rand = "0.7.3"
+proptest = "1"
+proptest-derive = "0.3"
+criterion = "0.3"
+rand = "0.8"
 serde_test = "1"
