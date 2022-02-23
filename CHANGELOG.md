@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### CHANGED
+
+-   `smartstring` now implements its own boxed string type rather than deferring directly to
+    `String`, so it no longer makes assumptions it shouldn't be making about the layout of the
+    `String` struct. This also allows us to organise the boxed struct in a way that will let us rely
+    only on our basic assumption that heap memory is word aligned on both big and little endian
+    architectures. The most immediate consequence of this is that `smartstring` will now compile on
+    32-bit big endian architectures such as `mips`.
+
+    In short: `smartstring` no longer relies on undefined behaviour, and should be safe to use
+    anywhere.
+
+-   The above means that the boxed `SmartString` is no longer pointer compatible with `String`, so
+    if you were relying on that despite the documentation telling you not to, you'll really have to
+    stop it now. Converting between `SmartString` and `String` using `From` and `Into` traits is
+    still efficient and allocation free.
+
+-   The minimum supported rustc version is now 1.57.0.
+
 ## [0.2.10] - 2022-02-20
 
 ### CHANGED

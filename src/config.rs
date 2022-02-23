@@ -5,7 +5,7 @@
 use crate::{boxed::BoxedString, inline::InlineString, SmartString};
 use alloc::string::String;
 use core::mem::{align_of, size_of};
-use static_assertions::{assert_cfg, assert_eq_size, const_assert, const_assert_eq};
+use static_assertions::{assert_eq_size, const_assert, const_assert_eq};
 
 /// A compact string representation equal to [`String`] in size with guaranteed inlining.
 ///
@@ -40,8 +40,6 @@ pub struct LazyCompact;
 ///
 /// See [`LazyCompact`] and [`Compact`].
 pub trait SmartStringMode {
-    /// The boxed string type for this layout.
-    type BoxedString: BoxedString + From<String>;
     /// The inline string type for this layout.
     type InlineArray: AsRef<[u8]> + AsMut<[u8]> + Clone + Copy;
     /// A constant to decide whether to turn a wrapped string back into an inlined
@@ -51,13 +49,11 @@ pub trait SmartStringMode {
 }
 
 impl SmartStringMode for Compact {
-    type BoxedString = String;
     type InlineArray = [u8; size_of::<String>() - 1];
     const DEALLOC: bool = true;
 }
 
 impl SmartStringMode for LazyCompact {
-    type BoxedString = String;
     type InlineArray = [u8; size_of::<String>() - 1];
     const DEALLOC: bool = false;
 }
@@ -70,14 +66,8 @@ pub const MAX_INLINE: usize = size_of::<String>() - 1;
 const_assert!(MAX_INLINE < 128);
 
 // Assert that all the structs are of the expected size.
-assert_eq_size!(
-    <Compact as SmartStringMode>::BoxedString,
-    SmartString<Compact>
-);
-assert_eq_size!(
-    <LazyCompact as SmartStringMode>::BoxedString,
-    SmartString<LazyCompact>
-);
+assert_eq_size!(BoxedString, SmartString<Compact>);
+assert_eq_size!(BoxedString, SmartString<LazyCompact>);
 assert_eq_size!(InlineString, SmartString<Compact>);
 assert_eq_size!(InlineString, SmartString<LazyCompact>);
 
@@ -87,7 +77,3 @@ assert_eq_size!(String, SmartString<LazyCompact>);
 // Assert that `SmartString` is aligned correctly.
 const_assert_eq!(align_of::<String>(), align_of::<SmartString<Compact>>());
 const_assert_eq!(align_of::<String>(), align_of::<SmartString<LazyCompact>>());
-
-// This hack isn't going to work out very well on 32-bit big endian archs,
-// so let's not compile on those.
-assert_cfg!(not(all(target_endian = "big", target_pointer_width = "32")));

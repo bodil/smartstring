@@ -25,18 +25,6 @@
 //!
 //! ## How To Use It?
 //!
-//! Before using [`SmartString`], you should always call
-//! [`smartstring::validate()`][validate], to make sure [`SmartString`] is safe to use.
-//! Ideally, you should call it at the start of your `main()` function, and
-//! from your test suite. [`SmartString`] will also attempt to crash early if
-//! inconsistencies are detected, but this isn't foolproof.
-//!
-//! ```rust
-//! fn main() {
-//!     smartstring::validate();
-//! }
-//! ```
-//!
 //! [`SmartString`] has the exact same API as [`String`],
 //! all the clever bits happen automatically behind the scenes, so you could just:
 //!
@@ -63,15 +51,6 @@
 //! contents. Likewise, if the string's length should drop below its inline
 //! capacity again, it deallocates the string and moves its contents inline.
 //!
-//! Given that we use the knowledge that a certain bit in the memory layout
-//! of [`String`] will always be unset as a discriminant, you would be
-//! able to call [`std::mem::transmute::<String>()`][std::mem::transmute] on a boxed
-//! smart string and start using it as a normal [`String`] immediately -
-//! there's no pointer tagging or similar trickery going on here.
-//! (But please don't do that, there's an efficient [`Into<String>`][IntoString]
-//! implementation that does the exact same thing with no need to go unsafe
-//! in your own code.)
-//!
 //! In [`Compact`] mode, it is aggressive about inlining strings, meaning that if you modify a heap allocated
 //! string such that it becomes short enough for inlining, it will be inlined immediately
 //! and the allocated [`String`] will be dropped. This may cause multiple
@@ -95,24 +74,6 @@
 //! memory efficient in these cases. There will always be a slight overhead on all
 //! operations on boxed strings, compared to [`String`].
 //!
-//! ## Caveat
-//!
-//! The way `smartstring` gets by without a discriminant is dependent on the memory layout of the
-//! [`std::string::String`] struct, which isn't something the Rust compiler and standard library make any
-//! guarantees about. `smartstring` makes an assumption about how it's been laid out, which has held
-//! basically since rustc came into existence, but is nonetheless not a safe assumption to make, and if
-//! the layout ever changes, `smartstring` will stop working properly (at least on little-endian
-//! architectures, the assumptions made on big-endian archs will hold regardless of the actual memory
-//! layout). Its test suite does comprehensive validation of these assumptions, and as long as the
-//! [CI build](https://travis-ci.org/github/bodil/smartstring) is passing for any given rustc version,
-//! you can be sure it will do its job properly on all tested architectures. More directly, as mentioned
-//! above, you should always call [`smartstring::validate()`][validate] before using [`SmartString`] to
-//! remove any doubt.
-//!
-//! As an extra precaution, some runtime checks are made as well, so that if the memory layout
-//! assumption no longer holds, `smartstring` will not work correctly, but there should be no security
-//! implications and it should crash early.
-//!
 //! ## Feature Flags
 //!
 //! `smartstring` comes with optional support for the following crates through Cargo
@@ -135,6 +96,8 @@
 //! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
 //! [Arbitrary]: https://docs.rs/arbitrary/latest/arbitrary/trait.Arbitrary.html
 
+// Ensure all unsafe blocks get flagged for manual validation.
+#![deny(unsafe_code)]
 #![forbid(rust_2018_idioms)]
 #![deny(nonstandard_style)]
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
@@ -156,7 +119,7 @@ use core::{
     marker::PhantomData,
     mem::{forget, MaybeUninit},
     ops::{
-        Add, Bound, Deref, DerefMut, Index, IndexMut, Range, RangeBounds, RangeFrom, RangeFull,
+        Add, Deref, DerefMut, Index, IndexMut, Range, RangeBounds, RangeFrom, RangeFull,
         RangeInclusive, RangeTo, RangeToInclusive,
     },
     ptr::drop_in_place,
@@ -170,7 +133,7 @@ mod config;
 pub use config::{Compact, LazyCompact, SmartStringMode, MAX_INLINE};
 
 mod marker_byte;
-use marker_byte::{Discriminant, Marker};
+use marker_byte::Discriminant;
 
 mod inline;
 use inline::InlineString;
@@ -184,6 +147,9 @@ use casts::{StringCast, StringCastInto, StringCastMut};
 mod iter;
 pub use iter::Drain;
 
+mod ops;
+use ops::{string_op_grow, string_op_shrink};
+
 #[cfg(feature = "serde")]
 mod serde;
 
@@ -192,50 +158,6 @@ mod arbitrary;
 
 #[cfg(feature = "proptest")]
 pub mod proptest;
-
-/// Validate the crate's assumptions about [`String`] memory layout.
-///
-/// Because [`SmartString`] makes some assumptions about how [`String`] is
-/// laid out in memory that rustc does not actually guarantee, you should
-/// always run this function in your target environment before using
-/// [`SmartString`], ideally at the start of your application's `main()`
-/// function, so your application will crash as early as possible without
-/// any security risks. You should also run it as part of your application's
-/// test suite, to catch problems before runtime.
-///
-/// If the assumptions don't hold, this function will panic.
-///
-/// # Example
-///
-/// ```
-/// fn main() {
-///     smartstring::validate();
-/// }
-/// ```
-pub fn validate() {
-    let mut s = String::with_capacity(5);
-    s.push_str("lol");
-    assert_eq!(3, s.len(), "SmartString memory layout check failed");
-    assert_eq!(5, s.capacity(), "SmartString memory layout check failed");
-    let ptr: *const String = &s;
-    let ptr: *const usize = ptr.cast();
-    let first_bytes = unsafe { *ptr };
-    assert_ne!(3, first_bytes, "SmartString memory layout check failed");
-    assert_ne!(5, first_bytes, "SmartString memory layout check failed");
-    let first_byte = unsafe { *(ptr as *const u8) };
-    #[cfg(target_endian = "little")]
-    assert_eq!(
-        0,
-        first_byte & 0x01,
-        "SmartString memory layout check failed"
-    );
-    #[cfg(target_endian = "big")]
-    assert_eq!(
-        0,
-        first_byte & 0x80,
-        "SmartString memory layout check failed"
-    );
-}
 
 /// Convenient type aliases.
 pub mod alias {
@@ -277,7 +199,10 @@ pub struct SmartString<Mode: SmartStringMode> {
 impl<Mode: SmartStringMode> Drop for SmartString<Mode> {
     fn drop(&mut self) {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
-            unsafe { drop_in_place(string) };
+            #[allow(unsafe_code)]
+            unsafe {
+                drop_in_place(string)
+            };
         }
     }
 }
@@ -286,10 +211,10 @@ impl<Mode: SmartStringMode> Clone for SmartString<Mode> {
     /// Clone a [`SmartString`].
     ///
     /// If the string is inlined, this is a [`Copy`] operation. Otherwise,
-    /// [`String::clone()`][String::clone] is invoked.
+    /// a string with the same capacity as the source is allocated.
     fn clone(&self) -> Self {
         match self.cast() {
-            StringCast::Boxed(string) => Self::from_boxed(string.string().clone().into()),
+            StringCast::Boxed(string) => Self::from_boxed(string.clone()),
             StringCast::Inline(string) => Self::from_inline(*string),
         }
     }
@@ -301,8 +226,8 @@ impl<Mode: SmartStringMode> Deref for SmartString<Mode> {
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         match self.cast() {
-            StringCast::Boxed(string) => string.string().as_str(),
-            StringCast::Inline(string) => string.as_str(),
+            StringCast::Boxed(string) => string.deref(),
+            StringCast::Inline(string) => string.deref(),
         }
     }
 }
@@ -311,8 +236,8 @@ impl<Mode: SmartStringMode> DerefMut for SmartString<Mode> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self.cast_mut() {
-            StringCastMut::Boxed(string) => string.string_mut().as_mut_str(),
-            StringCastMut::Inline(string) => string.as_mut_str(),
+            StringCastMut::Boxed(string) => string.deref_mut(),
+            StringCastMut::Inline(string) => string.deref_mut(),
         }
     }
 }
@@ -354,13 +279,16 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         Self::from_inline(InlineString::new())
     }
 
-    fn from_boxed(boxed: Mode::BoxedString) -> Self {
+    fn from_boxed(boxed: BoxedString) -> Self {
         let mut out = Self {
             data: MaybeUninit::uninit(),
             mode: PhantomData,
         };
-        let data_ptr: *mut Mode::BoxedString = out.data.as_mut_ptr().cast();
-        unsafe { data_ptr.write(boxed) };
+        let data_ptr: *mut BoxedString = out.data.as_mut_ptr().cast();
+        #[allow(unsafe_code)]
+        unsafe {
+            data_ptr.write(boxed)
+        };
         out
     }
 
@@ -372,18 +300,20 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     fn discriminant(&self) -> Discriminant {
-        let ptr: *const Marker = self.data.as_ptr().cast();
-        unsafe { *ptr }.discriminant()
+        #[allow(unsafe_code)]
+        unsafe { self.data.assume_init() }.marker.discriminant()
     }
 
-    fn cast(&self) -> StringCast<'_, Mode> {
+    fn cast(&self) -> StringCast<'_> {
+        #[allow(unsafe_code)]
         match self.discriminant() {
             Discriminant::Inline => StringCast::Inline(unsafe { &*self.data.as_ptr() }),
             Discriminant::Boxed => StringCast::Boxed(unsafe { &*self.data.as_ptr().cast() }),
         }
     }
 
-    fn cast_mut(&mut self) -> StringCastMut<'_, Mode> {
+    fn cast_mut(&mut self) -> StringCastMut<'_> {
+        #[allow(unsafe_code)]
         match self.discriminant() {
             Discriminant::Inline => StringCastMut::Inline(unsafe { &mut *self.data.as_mut_ptr() }),
             Discriminant::Boxed => {
@@ -392,11 +322,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         }
     }
 
-    fn cast_into(mut self) -> StringCastInto<Mode> {
+    fn cast_into(mut self) -> StringCastInto {
+        #[allow(unsafe_code)]
         match self.discriminant() {
             Discriminant::Inline => StringCastInto::Inline(unsafe { self.data.assume_init() }),
             Discriminant::Boxed => StringCastInto::Boxed(unsafe {
-                let boxed_ptr: *mut Mode::BoxedString = self.data.as_mut_ptr().cast();
+                let boxed_ptr: *mut BoxedString = self.data.as_mut_ptr().cast();
                 let string = boxed_ptr.read();
                 forget(self);
                 string
@@ -404,11 +335,13 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         }
     }
 
-    fn promote_from(&mut self, string: String) {
+    fn promote_from(&mut self, string: BoxedString) {
         debug_assert!(self.discriminant() == Discriminant::Inline);
-        let string: Mode::BoxedString = string.into();
-        let data: *mut Mode::BoxedString = self.data.as_mut_ptr().cast();
-        unsafe { data.write(string) };
+        let data: *mut BoxedString = self.data.as_mut_ptr().cast();
+        #[allow(unsafe_code)]
+        unsafe {
+            data.write(string)
+        };
     }
 
     /// Attempt to inline the string if it's currently heap allocated.
@@ -428,11 +361,12 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
             if string.len() > MAX_INLINE {
                 false
             } else {
-                let inlined = string.string().as_bytes().into();
+                let s: &str = string.deref();
+                let inlined = s.into();
+                #[allow(unsafe_code)]
                 unsafe {
                     drop_in_place(string);
-                    let data = &mut self.data.as_mut_ptr();
-                    data.write(inlined);
+                    self.data.as_mut_ptr().write(inlined);
                 }
                 true
             }
@@ -471,46 +405,6 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         self.deref_mut()
     }
 
-    /// Push a character to the end of the string.
-    pub fn push(&mut self, ch: char) {
-        match self.cast_mut() {
-            StringCastMut::Boxed(string) => string.string_mut().push(ch),
-            StringCastMut::Inline(string) => {
-                let len = string.len();
-                let new_len = len + ch.len_utf8();
-                if new_len > MAX_INLINE {
-                    let mut new_str = String::with_capacity(new_len);
-                    new_str.push_str(string.as_str());
-                    new_str.push(ch);
-                    self.promote_from(new_str);
-                } else {
-                    let written = ch.encode_utf8(&mut string.as_mut_slice()[len..]).len();
-                    string.set_size(len + written);
-                }
-            }
-        }
-    }
-
-    /// Copy a string slice onto the end of the string.
-    pub fn push_str(&mut self, string: &str) {
-        let len = self.len();
-        match self.cast_mut() {
-            StringCastMut::Boxed(this) => this.string_mut().push_str(string),
-            StringCastMut::Inline(this) => {
-                let new_len = len + string.len();
-                if new_len > MAX_INLINE {
-                    let mut new_str = String::with_capacity(new_len);
-                    new_str.push_str(this.as_str());
-                    new_str.push_str(string);
-                    self.promote_from(new_str);
-                } else {
-                    this.as_mut_slice()[len..len + string.len()].copy_from_slice(string.as_bytes());
-                    this.set_size(len + string.len());
-                }
-            }
-        }
-    }
-
     /// Return the currently allocated capacity of the string.
     ///
     /// Note that if this is a boxed string, it returns [`String::capacity()`][String::capacity],
@@ -521,10 +415,20 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// it will be reallocated with a default capacity.
     pub fn capacity(&self) -> usize {
         if let StringCast::Boxed(string) = self.cast() {
-            string.string().capacity()
+            string.capacity()
         } else {
             MAX_INLINE
         }
+    }
+
+    /// Push a character to the end of the string.
+    pub fn push(&mut self, ch: char) {
+        string_op_grow!(ops::Push, self, ch)
+    }
+
+    /// Copy a string slice onto the end of the string.
+    pub fn push_str(&mut self, string: &str) {
+        string_op_grow!(ops::PushStr, self, string)
     }
 
     /// Shrink the capacity of the string to fit its contents exactly.
@@ -539,7 +443,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     pub fn shrink_to_fit(&mut self) {
         if let StringCastMut::Boxed(string) = self.cast_mut() {
             if string.len() > MAX_INLINE {
-                string.string_mut().shrink_to_fit();
+                string.shrink_to_fit();
             }
         }
         self.really_try_demote();
@@ -550,99 +454,33 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     /// If `new_len` is larger than the string's current length, this does nothing.
     /// If `new_len` isn't on a UTF-8 character boundary, this method panics.
     pub fn truncate(&mut self, new_len: usize) {
-        match self.cast_mut() {
-            StringCastMut::Boxed(string) => string.string_mut().truncate(new_len),
-            StringCastMut::Inline(string) => {
-                if new_len < string.len() {
-                    assert!(string.as_str().is_char_boundary(new_len));
-                    string.set_size(new_len);
-                }
-                return;
-            }
-        }
-        self.try_demote();
+        string_op_shrink!(ops::Truncate, self, new_len)
     }
 
     /// Pop a `char` off the end of the string.
     pub fn pop(&mut self) -> Option<char> {
-        let result = match self.cast_mut() {
-            StringCastMut::Boxed(string) => string.string_mut().pop()?,
-            StringCastMut::Inline(string) => {
-                let ch = string.as_str().chars().rev().next()?;
-                string.set_size(string.len() - ch.len_utf8());
-                return Some(ch);
-            }
-        };
-        self.try_demote();
-        Some(result)
+        string_op_shrink!(ops::Pop, self)
     }
 
     /// Remove a `char` from the string at the given index.
     ///
     /// If the index doesn't fall on a UTF-8 character boundary, this method panics.
     pub fn remove(&mut self, index: usize) -> char {
-        let result = match self.cast_mut() {
-            StringCastMut::Boxed(string) => string.string_mut().remove(index),
-            StringCastMut::Inline(string) => {
-                let ch = match string.as_str()[index..].chars().next() {
-                    Some(ch) => ch,
-                    None => panic!("cannot remove a char from the end of a string"),
-                };
-                let next = index + ch.len_utf8();
-                let len = string.len();
-                let tail_len = len - next;
-                if tail_len > 0 {
-                    unsafe {
-                        (&mut string.as_mut_slice()[index] as *mut u8)
-                            .copy_from(&string.as_slice()[next], tail_len);
-                    }
-                }
-                string.set_size(len - (next - index));
-                return ch;
-            }
-        };
-        self.try_demote();
-        result
+        string_op_shrink!(ops::Remove, self, index)
     }
 
     /// Insert a `char` into the string at the given index.
     ///
     /// If the index doesn't fall on a UTF-8 character boundary, this method panics.
     pub fn insert(&mut self, index: usize, ch: char) {
-        match self.cast_mut() {
-            StringCastMut::Boxed(string) => {
-                string.string_mut().insert(index, ch);
-            }
-            StringCastMut::Inline(string) if string.len() + ch.len_utf8() <= MAX_INLINE => {
-                let mut buffer = [0; 4];
-                let buffer = ch.encode_utf8(&mut buffer).as_bytes();
-                string.insert_bytes(index, buffer);
-            }
-            _ => {
-                let mut string = self.to_string();
-                string.insert(index, ch);
-                self.promote_from(string);
-            }
-        }
+        string_op_grow!(ops::Insert, self, index, ch)
     }
 
     /// Insert a string slice into the string at the given index.
     ///
     /// If the index doesn't fall on a UTF-8 character boundary, this method panics.
     pub fn insert_str(&mut self, index: usize, string: &str) {
-        match self.cast_mut() {
-            StringCastMut::Boxed(this) => {
-                this.string_mut().insert_str(index, string);
-            }
-            StringCastMut::Inline(this) if this.len() + string.len() <= MAX_INLINE => {
-                this.insert_bytes(index, string.as_bytes());
-            }
-            _ => {
-                let mut this = self.to_string();
-                this.insert_str(index, string);
-                self.promote_from(this);
-            }
-        }
+        string_op_grow!(ops::InsertStr, self, index, string)
     }
 
     /// Split the string into two at the given index.
@@ -652,18 +490,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     ///
     /// If the index doesn't fall on a UTF-8 character boundary, this method panics.
     pub fn split_off(&mut self, index: usize) -> Self {
-        let result = match self.cast_mut() {
-            StringCastMut::Boxed(string) => string.string_mut().split_off(index),
-            StringCastMut::Inline(string) => {
-                let s = string.as_str();
-                assert!(s.is_char_boundary(index));
-                let result = s[index..].into();
-                string.set_size(index);
-                return result;
-            }
-        };
-        self.try_demote();
-        result.into()
+        string_op_shrink!(ops::SplitOff<Mode>, self, index)
     }
 
     /// Clear the string.
@@ -674,45 +501,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     /// Filter out `char`s not matching a predicate.
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(char) -> bool,
     {
-        match self.cast_mut() {
-            StringCastMut::Boxed(string) => {
-                string.string_mut().retain(f);
-            }
-            StringCastMut::Inline(string) => {
-                let len = string.len();
-                let mut del_bytes = 0;
-                let mut index = 0;
-
-                while index < len {
-                    let ch = unsafe {
-                        string
-                            .as_mut_str()
-                            .get_unchecked(index..len)
-                            .chars()
-                            .next()
-                            .unwrap()
-                    };
-                    let ch_len = ch.len_utf8();
-
-                    if !f(ch) {
-                        del_bytes += ch_len;
-                    } else if del_bytes > 0 {
-                        let ptr = string.as_mut_slice().as_mut_ptr();
-                        unsafe { ptr.add(index - del_bytes).copy_from(ptr.add(index), ch_len) };
-                    }
-                    index += ch_len;
-                }
-                if del_bytes > 0 {
-                    string.set_size(len - del_bytes);
-                }
-                return;
-            }
-        }
-        self.try_demote();
+        string_op_shrink!(ops::Retain, self, f)
     }
 
     /// Construct a draining iterator over a given range.
@@ -731,56 +524,9 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     where
         R: RangeBounds<usize>,
     {
-        match self.cast_mut() {
-            StringCastMut::Boxed(string) => {
-                string.string_mut().replace_range(range, replace_with);
-            }
-            StringCastMut::Inline(string) => {
-                let len = string.len();
-                let (start, end) = bounds_for(&range, len);
-                assert!(end >= start);
-                assert!(end <= len);
-                assert!(string.as_str().is_char_boundary(start));
-                assert!(string.as_str().is_char_boundary(end));
-                let replaced_len = end - start;
-                let replace_len = replace_with.len();
-                if (len - replaced_len) + replace_len > MAX_INLINE {
-                    let mut string = string.as_str().to_string();
-                    string.replace_range(range, replace_with);
-                    self.promote_from(string);
-                } else {
-                    let new_end = start + replace_len;
-                    let end_size = len - end;
-                    let ptr = string.as_mut_slice().as_mut_ptr();
-                    unsafe {
-                        ptr.add(end).copy_to(ptr.add(new_end), end_size);
-                        ptr.add(start)
-                            .copy_from(replace_with.as_bytes().as_ptr(), replace_len);
-                    }
-                    string.set_size(start + replace_len + end_size);
-                }
-                return;
-            }
-        }
+        string_op_grow!(ops::ReplaceRange, self, &range, replace_with);
         self.try_demote();
     }
-}
-
-fn bounds_for<R>(range: &R, max_len: usize) -> (usize, usize)
-where
-    R: RangeBounds<usize>,
-{
-    let start = match range.start_bound() {
-        Bound::Included(&n) => n,
-        Bound::Excluded(&n) => n.checked_add(1).unwrap(),
-        Bound::Unbounded => 0,
-    };
-    let end = match range.end_bound() {
-        Bound::Included(&n) => n.checked_add(1).unwrap(),
-        Bound::Excluded(&n) => n,
-        Bound::Unbounded => max_len,
-    };
-    (start, end)
 }
 
 impl<Mode: SmartStringMode> Default for SmartString<Mode> {
@@ -902,7 +648,7 @@ impl<Mode: SmartStringMode> From<&'_ str> for SmartString<Mode> {
         if string.len() > MAX_INLINE {
             Self::from_boxed(string.to_string().into())
         } else {
-            Self::from_inline(string.as_bytes().into())
+            Self::from_inline(string.into())
         }
     }
 }
@@ -912,7 +658,7 @@ impl<Mode: SmartStringMode> From<&'_ mut str> for SmartString<Mode> {
         if string.len() > MAX_INLINE {
             Self::from_boxed(string.to_string().into())
         } else {
-            Self::from_inline(string.as_bytes().into())
+            Self::from_inline(string.deref().into())
         }
     }
 }
@@ -922,7 +668,7 @@ impl<Mode: SmartStringMode> From<&'_ String> for SmartString<Mode> {
         if string.len() > MAX_INLINE {
             Self::from_boxed(string.clone().into())
         } else {
-            Self::from_inline(string.as_bytes().into())
+            Self::from_inline(string.deref().into())
         }
     }
 }
@@ -932,7 +678,7 @@ impl<Mode: SmartStringMode> From<String> for SmartString<Mode> {
         if string.len() > MAX_INLINE {
             Self::from_boxed(string.into())
         } else {
-            Self::from_inline(string.as_bytes().into())
+            Self::from_inline(string.deref().into())
         }
     }
 }
@@ -1119,14 +865,14 @@ impl<Mode: SmartStringMode> FromStr for SmartString<Mode> {
     }
 }
 
-impl<Mode: SmartStringMode> Into<String> for SmartString<Mode> {
+impl<Mode: SmartStringMode> From<SmartString<Mode>> for String {
     /// Unwrap a boxed [`String`][String], or copy an inline string into a new [`String`][String].
     ///
     /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
-    fn into(self) -> String {
-        match self.cast_into() {
-            StringCastInto::Boxed(string) => string.into_string(),
-            StringCastInto::Inline(string) => string.as_str().to_string(),
+    fn from(s: SmartString<Mode>) -> Self {
+        match s.cast_into() {
+            StringCastInto::Boxed(string) => string.into(),
+            StringCastInto::Inline(string) => string.to_string(),
         }
     }
 }

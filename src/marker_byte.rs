@@ -2,12 +2,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// We need to know the endianness of the platform to know how to deal with pointers.
-#[cfg(target_endian = "big")]
-const UPSIDE_DOWN_LAND: bool = false;
-#[cfg(target_endian = "little")]
-const UPSIDE_DOWN_LAND: bool = true;
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Discriminant {
     Boxed,
@@ -39,12 +33,7 @@ pub(crate) struct Marker(u8);
 impl Marker {
     #[inline(always)]
     const fn assemble(discriminant: Discriminant, data: u8) -> u8 {
-        let data = data;
-        if UPSIDE_DOWN_LAND {
-            data << 1 | discriminant.bit()
-        } else {
-            discriminant.bit() << 7 | data
-        }
+        data << 1 | discriminant.bit()
     }
 
     #[inline(always)]
@@ -53,31 +42,19 @@ impl Marker {
     }
 
     #[inline(always)]
-    pub(crate) const unsafe fn new_inline_unsafe(data: u8) -> Self {
-        Self(Self::assemble(Discriminant::Inline, data))
-    }
-
-    pub(crate) fn new_inline(data: u8) -> Self {
+    pub(crate) const fn new_inline(data: u8) -> Self {
         debug_assert!(data < 0x80);
-        unsafe { Self::new_inline_unsafe(data) }
+        Self(Self::assemble(Discriminant::Inline, data))
     }
 
     #[inline(always)]
     pub(crate) const fn discriminant(self) -> Discriminant {
-        Discriminant::from_bit(if UPSIDE_DOWN_LAND {
-            self.0 & 0x01 != 0
-        } else {
-            self.0 & 0x80 != 0
-        })
+        Discriminant::from_bit(self.0 & 0x01 != 0)
     }
 
     #[inline(always)]
     pub(crate) const fn data(self) -> u8 {
-        if UPSIDE_DOWN_LAND {
-            self.0 >> 1
-        } else {
-            self.0 & 0x7f
-        }
+        self.0 >> 1
     }
 
     #[inline(always)]
