@@ -163,11 +163,11 @@ impl From<String> for BoxedString {
     }
 }
 
-impl Into<String> for BoxedString {
-    fn into(self) -> String {
+impl From<BoxedString> for String {
+    fn from(s: BoxedString) -> Self {
         #[allow(unsafe_code)]
-        let s = unsafe { String::from_raw_parts(self.ptr.as_ptr(), self.len(), self.capacity()) };
-        forget(self);
-        s
+        let out = unsafe { String::from_raw_parts(s.ptr.as_ptr(), s.len(), s.capacity()) };
+        forget(s);
+        out
     }
 }

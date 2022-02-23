@@ -865,12 +865,12 @@ impl<Mode: SmartStringMode> FromStr for SmartString<Mode> {
     }
 }
 
-impl<Mode: SmartStringMode> Into<String> for SmartString<Mode> {
+impl<Mode: SmartStringMode> From<SmartString<Mode>> for String {
     /// Unwrap a boxed [`String`][String], or copy an inline string into a new [`String`][String].
     ///
     /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
-    fn into(self) -> String {
-        match self.cast_into() {
+    fn from(s: SmartString<Mode>) -> Self {
+        match s.cast_into() {
             StringCastInto::Boxed(string) => string.into(),
             StringCastInto::Inline(string) => string.to_string(),
         }
