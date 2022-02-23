@@ -7,3 +7,5 @@
 cc 371b459819b92f730318ad7fb8b15be10ac03393f9eb776d966a9af8bc489ae9 # shrinks to constructor = New, actions = [InsertStr(1, "")]
 cc 5f343832f658239791b2754c8f1ec82e4caa9efb34bf1393636df2480ec9f176 # shrinks to constructor = New, actions = [InsertStr(1, "")]
 cc b11c06f9d964d4fd4d4b6e36a7b04c383138422ff7f0f1d37d0c706de451d770 # shrinks to constructor = New, actions = [PushStr("{%:A¥%🕴🕴"), PushStr("%{{%¥{"), PushStr("?:%"), PushStr("🕴"), PushStr("%{?2"), Retain("?{¥:2🕴%")]
+cc 36b6f0fa95e8925cda11c176d3f606208e8085d3367c74c2a5f6df0538277b7a # shrinks to constructor = FromString("AΣA א \u{16af0}א￼ﬀ𑌓"), actions = [InsertStr(6, "")]
+cc 746a6d4c7bc53760e936eb5b7c332a9228f0a5209abd9538685e53c04d26ac71 # shrinks to constructor = New, actions = [PushStr("00𐲀Ὑ𞺋  🡐\u{abc}a0"), InsertStr(3, "")]

@@ -523,9 +523,4 @@ mod tests {
             SmartString::<Compact>::from("\u{323}\u{323}\u{323}ω\u{323}\u{323}\u{323}㌣\u{e323}㤘");
         s.remove(20);
     }
-
-    #[test]
-    fn string_layout_consistency_check() {
-        crate::validate();
-    }
 }

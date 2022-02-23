@@ -51,6 +51,27 @@ jobs:
                   command: test
                   args: --all-features
 
+    nostd:
+        name: no_std build
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                rust:
+                    - stable
+                    - nightly
+                    - 1.56.0 # lowest supported version
+        steps:
+            - uses: actions/checkout@v2
+            - uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: ${{ matrix.rust }}
+                  override: true
+            - uses: actions-rs/cargo@v1
+              with:
+                  command: build
+                  args: --no-default-features
+
     fmt:
         name: Rustfmt
         runs-on: ubuntu-latest
@@ -88,6 +109,7 @@ jobs:
                   name: Clippy-${{ matrix.rust }}
                   token: ${{ secrets.GITHUB_TOKEN }}
                   args: --all-features
+
     # miri:
     #     name: Miri
     #     runs-on: ubuntu-latest
