@@ -24,6 +24,8 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
     stop it now. Converting between `SmartString` and `String` using `From` and `Into` traits is
     still efficient and allocation free.
 
+-   The minimum supported rustc version is now 1.57.0.
+
 ## [0.2.10] - 2022-02-20
 
 ### CHANGED

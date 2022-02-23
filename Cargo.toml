@@ -11,7 +11,7 @@ readme = "./README.md"
 categories = ["data-structures"]
 keywords = ["cache-local", "cpu-cache", "small-string", "sso", "inline-string"]
 exclude = ["release.toml", "proptest-regressions/**"]
-rust-version = "1.56"
+rust-version = "1.57"
 
 [package.metadata.docs.rs]
 features = ["arbitrary", "proptest", "serde"]

@@ -14,7 +14,7 @@ jobs:
                 rust:
                     - stable
                     - nightly
-                    - 1.56.0 # lowest supported version
+                    - 1.57.0 # lowest supported version
                 flags:
                     - --all-features
                     - --no-default-features
@@ -38,7 +38,7 @@ jobs:
                 rust:
                     - stable
                     - nightly
-                    - 1.56.0 # lowest supported version
+                    - 1.57.0 # lowest supported version
         steps:
             - uses: actions/checkout@v2
             - uses: actions-rs/toolchain@v1
@@ -59,7 +59,7 @@ jobs:
                 rust:
                     - stable
                     - nightly
-                    - 1.56.0 # lowest supported version
+                    - 1.57.0 # lowest supported version
         steps:
             - uses: actions/checkout@v2
             - uses: actions-rs/toolchain@v1
