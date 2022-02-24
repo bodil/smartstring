@@ -300,7 +300,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         let str_ptr: *const BoxedString =
             self.data.as_ptr().cast() as *const _ as *const BoxedString;
         #[allow(unsafe_code)]
-        Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*str_ptr }) == 1)
+        Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*str_ptr }))
     }
 
     fn cast(&self) -> StringCast<'_> {

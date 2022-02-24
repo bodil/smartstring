@@ -27,6 +27,15 @@ pub(crate) struct BoxedString {
     ptr: NonNull<u8>,
 }
 
+/// Checks if a pointer is aligned to an even address (good)
+/// or an odd address (either actually an InlineString or very, very bad).
+///
+/// Returns `true` if aligned to an odd address, `false` if even. The sense of
+/// the boolean is "does this look like an InlineString? true/false"
+fn check_alignment(ptr: *const u8) -> bool {
+    ptr.align_offset(2) > 0
+}
+
 impl GenericString for BoxedString {
     fn set_size(&mut self, size: usize) {
         self.len = size;
@@ -44,9 +53,8 @@ impl GenericString for BoxedString {
 impl BoxedString {
     const MINIMAL_CAPACITY: usize = MAX_INLINE * 2;
 
-    pub(crate) fn check_alignment(this: &Self) -> usize {
-        let ptr: *const u8 = this.ptr.as_ptr();
-        ptr.align_offset(2)
+    pub(crate) fn check_alignment(this: &Self) -> bool {
+        check_alignment(this.ptr.as_ptr())
     }
 
     fn layout_for(cap: usize) -> Layout {
@@ -163,6 +171,10 @@ impl From<String> for BoxedString {
         if s.is_empty() {
             Self::new(s.capacity())
         } else {
+            // If the `String`'s buffer isn't word aligned, we can't reuse it.
+            if check_alignment(s.as_ptr()) {
+                return Self::from_str(s.capacity(), &s);
+            }
             // TODO: Use String::into_raw_parts when stabilised, meanwhile let's get unsafe
             let len = s.len();
             let cap = s.capacity();

@@ -535,11 +535,11 @@ mod tests {
         let boxed_ptr: *const BoxedString = inline_ptr.cast();
         #[allow(unsafe_code)]
         let discriminant =
-            Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*boxed_ptr }) == 1);
+            Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*boxed_ptr }));
         assert_eq!(Discriminant::Inline, discriminant);
 
         let boxed = BoxedString::from_str(32, "welp");
-        let discriminant = Discriminant::from_bit(BoxedString::check_alignment(&boxed) == 1);
+        let discriminant = Discriminant::from_bit(BoxedString::check_alignment(&boxed));
         assert_eq!(Discriminant::Boxed, discriminant);
 
         let mut s = SmartString::<Compact>::new();
