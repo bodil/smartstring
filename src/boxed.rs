@@ -4,7 +4,7 @@
 
 use alloc::{alloc::Layout, string::String};
 use core::{
-    mem::forget,
+    mem::{align_of, forget},
     ops::{Deref, DerefMut},
     ptr::NonNull,
 };
@@ -22,7 +22,7 @@ pub(crate) struct BoxedString {
 #[cfg(endian = "big")]
 #[repr(C)]
 pub(crate) struct BoxedString {
-    length: usize,
+    len: usize,
     cap: usize,
     ptr: NunNull<u8>,
 }
@@ -44,8 +44,17 @@ impl GenericString for BoxedString {
 impl BoxedString {
     const MINIMAL_CAPACITY: usize = MAX_INLINE * 2;
 
+    pub(crate) fn check_alignment(this: &Self) -> usize {
+        let ptr: *const u8 = this.ptr.as_ptr();
+        ptr.align_offset(2)
+    }
+
     fn layout_for(cap: usize) -> Layout {
-        let layout = Layout::array::<u8>(cap).unwrap();
+        // Always request memory that is specifically aligned to at least 2, so
+        // the least significant bit is guaranteed to be 0.
+        let layout = Layout::array::<u8>(cap)
+            .and_then(|layout| layout.align_to(align_of::<u16>()))
+            .unwrap();
         assert!(
             layout.size() <= isize::MAX as usize,
             "allocation too large!"
@@ -56,11 +65,12 @@ impl BoxedString {
     fn alloc(cap: usize) -> NonNull<u8> {
         let layout = Self::layout_for(cap);
         #[allow(unsafe_code)]
-        let ptr = unsafe { alloc::alloc::alloc(layout) };
-        match NonNull::new(ptr) {
+        let ptr = match NonNull::new(unsafe { alloc::alloc::alloc(layout) }) {
             Some(ptr) => ptr,
             None => alloc::alloc::handle_alloc_error(layout),
-        }
+        };
+        debug_assert!(ptr.as_ptr().align_offset(2) == 0);
+        ptr
     }
 
     fn realloc(&mut self, cap: usize) {
@@ -74,6 +84,7 @@ impl BoxedString {
             None => alloc::alloc::handle_alloc_error(layout),
         };
         self.cap = cap;
+        debug_assert!(self.ptr.as_ptr().align_offset(2) == 0);
     }
 
     pub(crate) fn ensure_capacity(&mut self, target_cap: usize) {

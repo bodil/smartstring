@@ -188,9 +188,6 @@ pub mod alias {
 /// state changes wouldn't carry over if the inline string is promoted to a boxed
 /// one - not without also storing that state in the inline representation, which
 /// would waste precious bytes for inline string data.
-#[repr(C)]
-#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
 pub struct SmartString<Mode: SmartStringMode> {
     data: MaybeUninit<InlineString>,
     mode: PhantomData<Mode>,
@@ -300,8 +297,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     fn discriminant(&self) -> Discriminant {
+        // unsafe { self.data.assume_init() }.marker.discriminant()
+        let str_ptr: *const BoxedString =
+            self.data.as_ptr().cast() as *const _ as *const BoxedString;
         #[allow(unsafe_code)]
-        unsafe { self.data.assume_init() }.marker.discriminant()
+        Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*str_ptr }) == 1)
     }
 
     fn cast(&self) -> StringCast<'_> {

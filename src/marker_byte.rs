@@ -10,7 +10,7 @@ pub(crate) enum Discriminant {
 
 impl Discriminant {
     #[inline(always)]
-    const fn from_bit(bit: bool) -> Self {
+    pub(crate) const fn from_bit(bit: bool) -> Self {
         if bit {
             Self::Inline
         } else {

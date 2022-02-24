@@ -523,4 +523,32 @@ mod tests {
             SmartString::<Compact>::from("\u{323}\u{323}\u{323}ω\u{323}\u{323}\u{323}㌣\u{e323}㤘");
         s.remove(20);
     }
+
+    #[test]
+    fn check_alignment() {
+        use crate::boxed::BoxedString;
+        use crate::inline::InlineString;
+        use crate::marker_byte::Discriminant;
+
+        let inline = InlineString::new();
+        let inline_ptr: *const InlineString = &inline;
+        let boxed_ptr: *const BoxedString = inline_ptr.cast();
+        #[allow(unsafe_code)]
+        let discriminant =
+            Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*boxed_ptr }) == 1);
+        assert_eq!(Discriminant::Inline, discriminant);
+
+        let boxed = BoxedString::from_str(32, "welp");
+        let discriminant = Discriminant::from_bit(BoxedString::check_alignment(&boxed) == 1);
+        assert_eq!(Discriminant::Boxed, discriminant);
+
+        let mut s = SmartString::<Compact>::new();
+        assert_eq!(Discriminant::Inline, s.discriminant());
+        let big_str = "1234567890123456789012345678901234567890";
+        assert!(big_str.len() > MAX_INLINE);
+        s.push_str(big_str);
+        assert_eq!(Discriminant::Boxed, s.discriminant());
+        s.clear();
+        assert_eq!(Discriminant::Inline, s.discriminant());
+    }
 }

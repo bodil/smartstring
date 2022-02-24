@@ -5,7 +5,7 @@
 use crate::{boxed::BoxedString, inline::InlineString, SmartString};
 use alloc::string::String;
 use core::mem::{align_of, size_of};
-use static_assertions::{assert_eq_size, const_assert, const_assert_eq};
+use static_assertions::{assert_eq_align, assert_eq_size, const_assert, const_assert_eq};
 
 /// A compact string representation equal to [`String`] in size with guaranteed inlining.
 ///
@@ -70,6 +70,11 @@ assert_eq_size!(BoxedString, SmartString<Compact>);
 assert_eq_size!(BoxedString, SmartString<LazyCompact>);
 assert_eq_size!(InlineString, SmartString<Compact>);
 assert_eq_size!(InlineString, SmartString<LazyCompact>);
+
+assert_eq_align!(BoxedString, String);
+assert_eq_align!(InlineString, String);
+assert_eq_align!(SmartString<Compact>, String);
+assert_eq_align!(SmartString<LazyCompact>, String);
 
 assert_eq_size!(String, SmartString<Compact>);
 assert_eq_size!(String, SmartString<LazyCompact>);

@@ -10,6 +10,8 @@ use core::{
 
 #[cfg(not(endian = "big"))]
 #[repr(C)]
+#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
 pub(crate) struct InlineString {
     pub(crate) marker: Marker,
     pub(crate) data: [u8; MAX_INLINE],
@@ -17,6 +19,8 @@ pub(crate) struct InlineString {
 
 #[cfg(endian = "big")]
 #[repr(C)]
+#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
 pub(crate) struct InlineString {
     pub(crate) data: [u8; MAX_INLINE],
     pub(crate) marker: Marker,
