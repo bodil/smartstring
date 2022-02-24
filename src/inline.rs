@@ -8,7 +8,7 @@ use core::{
     str::{from_utf8_unchecked, from_utf8_unchecked_mut},
 };
 
-#[cfg(not(endian = "big"))]
+#[cfg(target_endian = "little")]
 #[repr(C)]
 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
@@ -17,7 +17,7 @@ pub(crate) struct InlineString {
     pub(crate) data: [u8; MAX_INLINE],
 }
 
-#[cfg(endian = "big")]
+#[cfg(target_endian = "big")]
 #[repr(C)]
 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]

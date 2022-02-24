@@ -11,7 +11,7 @@ use core::{
 
 use crate::{ops::GenericString, MAX_INLINE};
 
-#[cfg(not(endian = "big"))]
+#[cfg(target_endian = "little")]
 #[repr(C)]
 pub(crate) struct BoxedString {
     ptr: NonNull<u8>,
@@ -19,12 +19,12 @@ pub(crate) struct BoxedString {
     len: usize,
 }
 
-#[cfg(endian = "big")]
+#[cfg(target_endian = "big")]
 #[repr(C)]
 pub(crate) struct BoxedString {
     len: usize,
     cap: usize,
-    ptr: NunNull<u8>,
+    ptr: NonNull<u8>,
 }
 
 impl GenericString for BoxedString {
