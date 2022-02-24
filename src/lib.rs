@@ -10,7 +10,8 @@
 //! and is generally a little faster, and [`Compact`], which is the same as
 //! [`LazyCompact`] except it will aggressively re-inline any expanded
 //! [`String`]s which become short enough to do so.
-//! [`LazyCompact`] is the default.
+//! [`LazyCompact`] is the default, and what you should be using unless
+//! you care considerably more about heap memory usage than performance.
 //!
 //! ## What Is It For?
 //!
@@ -47,7 +48,7 @@
 //! giving us 24 bytes (on 64-bit architectures) minus one bit to encode our
 //! inline string. It uses 23 bytes to store the string data and the remaining
 //! 7 bits to encode the string's length. When the available space is exceeded,
-//! it swaps itself out with a [`String`] containing its previous
+//! it swaps itself out with a boxed string type containing its previous
 //! contents. Likewise, if the string's length should drop below its inline
 //! capacity again, it deallocates the string and moves its contents inline.
 //!
@@ -90,8 +91,6 @@
 //! | [`proptest`](https://crates.io/crates/proptest) | A strategy for generating [`SmartString`]s from a regular expression. |
 //! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`]. |
 //!
-//! [IntoString]: struct.SmartString.html#impl-Into%3CString%3E
-//! [serde]: https://crates.io/crates/serde
 //! [Serialize]: https://docs.rs/serde/latest/serde/trait.Serialize.html
 //! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
 //! [Arbitrary]: https://docs.rs/arbitrary/latest/arbitrary/trait.Arbitrary.html
