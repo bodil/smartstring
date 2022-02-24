@@ -448,7 +448,7 @@ mod tests {
     fn must_panic_on_out_of_bounds_range() {
         test_everything::<Compact>(
             Constructor::New,
-            vec![Action::Slice(TestBounds::Range(0, 13764126361151078400))],
+            vec![Action::Slice(TestBounds::Range(0, usize::MAX - 1))],
         );
     }
 
