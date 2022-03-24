@@ -164,7 +164,7 @@ impl Action {
     ) {
         match self {
             Self::Slice(range) => {
-                if range.should_panic(&control) {
+                if range.should_panic(control) {
                     assert_panic(|| range.assert_range(control, subject))
                 } else {
                     range.assert_range(control, subject);
@@ -243,7 +243,7 @@ impl Action {
                     TestBounds::ToInclusive(end) if end == usize::max_value() => return,
                     _ => {}
                 }
-                if range.should_panic(&control) {
+                if range.should_panic(control) {
                     assert_panic(|| match range {
                         TestBounds::Range(start, end) => {
                             (control.drain(start..end), subject.drain(start..end))
@@ -285,7 +285,7 @@ impl Action {
                     TestBounds::ToInclusive(end) if end == usize::max_value() => return,
                     _ => {}
                 }
-                if range.should_panic(&control) {
+                if range.should_panic(control) {
                     assert_panic(|| match range {
                         TestBounds::Range(start, end) => {
                             control.replace_range(start..end, &string);
