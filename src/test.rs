@@ -551,4 +551,16 @@ mod tests {
         s.clear();
         assert_eq!(Discriminant::Inline, s.discriminant());
     }
+
+    #[test]
+    fn from_string() {
+        let std_s =
+            String::from("I am a teapot short and stout; here is my handle, here is my snout");
+        let smart_s: SmartString<LazyCompact> = std_s.clone().into();
+        assert_eq!(std_s, smart_s);
+        let unsmart_s: String = smart_s.clone().into();
+        assert_eq!(smart_s, unsmart_s);
+        assert_eq!(std_s, unsmart_s);
+        // This test exists just to provoke a Miri problem when dropping a string created by SmartString::into::<String>() (#28)
+    }
 }

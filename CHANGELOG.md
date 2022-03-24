@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### FIXED
+
+-   To avoid an issue where allocated heap memory may be deallocated with a different layout
+    alignment than it was officially allocated with when converting between `std::string::String`
+    and `SmartString`, even if otherwise correctly aligned, the respective `From` implementations
+    now use `std::alloc::Allocator::grow()` to re-align the heap data as necessary. An unfortunate
+    consequence of this is that because the `std::alloc::Allocator` API hasn't been stabilised yet,
+    unless you're on nightly or some future stable rustc version after `allocator_api` has been
+    stabilised, converting between `String` and `SmartString` will always reallocate and copy
+    (making it always O(n) rather than O(1) when correctly aligned and O(n) otherwise).
+    ([#28](https://github.com/bodil/smartstring/issues/28))
+
 ## [1.0.0] - 2022-02-24
 
 ### CHANGED

@@ -101,6 +101,7 @@
 #![deny(nonstandard_style)]
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(needs_allocator_feature, feature(allocator_api))]
 
 extern crate alloc;
 

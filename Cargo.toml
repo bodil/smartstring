@@ -12,6 +12,7 @@ categories = ["data-structures"]
 keywords = ["cache-local", "cpu-cache", "small-string", "sso", "inline-string"]
 exclude = ["release.toml", "proptest-regressions/**"]
 rust-version = "1.57"
+build = "./build.rs"
 
 [package.metadata.docs.rs]
 features = ["arbitrary", "proptest", "serde"]
@@ -40,3 +41,7 @@ proptest-derive = "0.3"
 criterion = "0.3"
 rand = "0.8"
 serde_test = "1"
+
+[build-dependencies]
+version_check = "0.9"
+autocfg = "1"

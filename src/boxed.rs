@@ -4,7 +4,7 @@
 
 use alloc::{alloc::Layout, string::String};
 use core::{
-    mem::{align_of, forget},
+    mem::align_of,
     ops::{Deref, DerefMut},
     ptr::NonNull,
 };
@@ -167,30 +167,63 @@ impl DerefMut for BoxedString {
 }
 
 impl From<String> for BoxedString {
+    #[allow(unsafe_code, unused_mut)]
     fn from(mut s: String) -> Self {
         if s.is_empty() {
             Self::new(s.capacity())
         } else {
-            // If the `String`'s buffer isn't word aligned, we can't reuse it.
-            if check_alignment(s.as_ptr()) {
-                return Self::from_str(s.capacity(), &s);
+            #[cfg(has_allocator)]
+            {
+                // TODO: Use String::into_raw_parts when stabilised, meanwhile let's get unsafe
+                let len = s.len();
+                let cap = s.capacity();
+                #[allow(unsafe_code)]
+                let ptr = unsafe { NonNull::new_unchecked(s.as_mut_ptr()) };
+                let old_layout = Layout::array::<u8>(cap).unwrap();
+
+                use alloc::alloc::Allocator;
+                let allocator = alloc::alloc::Global;
+                if let Ok(aligned_ptr) =
+                    unsafe { allocator.grow(ptr, old_layout, Self::layout_for(cap)) }
+                {
+                    core::mem::forget(s);
+                    Self {
+                        cap,
+                        len,
+                        ptr: aligned_ptr.cast(),
+                    }
+                } else {
+                    Self::from_str(cap, &s)
+                }
             }
-            // TODO: Use String::into_raw_parts when stabilised, meanwhile let's get unsafe
-            let len = s.len();
-            let cap = s.capacity();
-            #[allow(unsafe_code)]
-            let ptr = unsafe { NonNull::new_unchecked(s.as_mut_ptr()) };
-            forget(s);
-            Self { cap, len, ptr }
+            #[cfg(not(has_allocator))]
+            Self::from_str(s.capacity(), &s)
         }
     }
 }
 
 impl From<BoxedString> for String {
+    #[allow(unsafe_code)]
     fn from(s: BoxedString) -> Self {
-        #[allow(unsafe_code)]
-        let out = unsafe { String::from_raw_parts(s.ptr.as_ptr(), s.len(), s.capacity()) };
-        forget(s);
-        out
+        #[cfg(has_allocator)]
+        {
+            let ptr = s.ptr;
+            let cap = s.cap;
+            let len = s.len;
+            let new_layout = Layout::array::<u8>(cap).unwrap();
+
+            use alloc::alloc::Allocator;
+            let allocator = alloc::alloc::Global;
+            if let Ok(aligned_ptr) =
+                unsafe { allocator.grow(ptr, BoxedString::layout_for(cap), new_layout) }
+            {
+                core::mem::forget(s);
+                unsafe { String::from_raw_parts(aligned_ptr.as_ptr().cast(), len, cap) }
+            } else {
+                String::from(s.deref())
+            }
+        }
+        #[cfg(not(has_allocator))]
+        String::from(s.deref())
     }
 }
