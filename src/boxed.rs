@@ -174,13 +174,19 @@ impl From<String> for BoxedString {
         } else {
             #[cfg(has_allocator)]
             {
+                // s.as_mut_ptr() borrows the string for &s[0..len]
+                // However, `allocator.grow()` copies the entire allocation - i.e. `&s[0..cap]
+                // if cap > len, Miri will throw an error as the read is out of bounds
+                // Under Miri, shrink the allocation to `len` to remove this mismatch and allow tests
+                // to run
+                #[cfg(miri)]
+                s.shrink_to_fit();
                 // TODO: Use String::into_raw_parts when stabilised, meanwhile let's get unsafe
                 let len = s.len();
                 let cap = s.capacity();
                 #[allow(unsafe_code)]
                 let ptr = unsafe { NonNull::new_unchecked(s.as_mut_ptr()) };
                 let old_layout = Layout::array::<u8>(cap).unwrap();
-
                 use alloc::alloc::Allocator;
                 let allocator = alloc::alloc::Global;
                 if let Ok(aligned_ptr) =
