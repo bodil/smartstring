@@ -178,7 +178,7 @@ impl From<String> for BoxedString {
                 let len = s.len();
                 let cap = s.capacity();
                 #[allow(unsafe_code)]
-                let ptr = unsafe { NonNull::new_unchecked(s.as_mut_ptr()) };
+                let ptr = unsafe { NonNull::new_unchecked(s.as_mut_vec().as_mut_ptr()) };
                 let old_layout = Layout::array::<u8>(cap).unwrap();
 
                 use alloc::alloc::Allocator;
