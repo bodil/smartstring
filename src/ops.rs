@@ -18,6 +18,7 @@ use core::{
 };
 
 pub(crate) trait GenericString: Deref<Target = str> + DerefMut<Target = str> {
+    fn cap(&self) -> usize;
     fn set_size(&mut self, size: usize);
     fn as_mut_capacity_slice(&mut self) -> &mut [u8];
 }

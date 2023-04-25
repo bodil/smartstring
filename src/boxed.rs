@@ -38,6 +38,10 @@ fn check_alignment(ptr: *const u8) -> bool {
 }
 
 impl GenericString for BoxedString {
+    fn cap(&self) -> usize {
+        self.cap
+    }
+
     fn set_size(&mut self, size: usize) {
         self.len = size;
         debug_assert!(self.len <= self.cap);
