@@ -136,6 +136,15 @@ impl Truncate {
     }
 }
 
+pub(crate) struct EnsureCapacity;
+impl EnsureCapacity {
+    pub(crate) fn cap<S: GenericString>(this: &S, target_cap: usize) -> usize {
+        this.cap().max(target_cap)
+    }
+
+    pub(crate) fn op<S: GenericString>(_this: &mut S, _target_cap: usize) {}
+}
+
 pub(crate) struct Pop;
 impl Pop {
     pub(crate) fn op<S: GenericString>(this: &mut S) -> Option<char> {

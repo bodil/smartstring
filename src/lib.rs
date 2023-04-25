@@ -421,6 +421,17 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         }
     }
 
+    /// Ensures that the string has a capacity of at least the given number of bytes.
+    /// This function will reallocate the string (and therefore unbox a boxed string)
+    /// in order to fit the new capacity.
+    ///
+    /// Note that if the string's capacity is already large enough, this function does nothing.
+    /// This also applies to inline strings, when `capacity` is less than or equal to
+    /// [`MAX_INLINE`].
+    pub fn ensure_capacity(&mut self, target_cap: usize) {
+        string_op_grow!(ops::EnsureCapacity, self, target_cap)
+    }
+
     /// Push a character to the end of the string.
     pub fn push(&mut self, ch: char) {
         string_op_grow!(ops::Push, self, ch)
