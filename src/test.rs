@@ -553,6 +553,42 @@ mod tests {
     }
 
     #[test]
+    fn capacity_modification() {
+        use crate::inline::InlineString;
+
+        const SHORT_TEXT: &'static str = "short enough";
+        static_assertions::const_assert!(SHORT_TEXT.len() < MAX_INLINE - 1);
+        let mut string =
+            SmartString::<Compact>::from_inline(InlineString::try_from(SHORT_TEXT).unwrap());
+
+        string.ensure_capacity(string.len() + 1);
+        assert!(string.capacity() >= SHORT_TEXT.len());
+        assert!(string.is_inline());
+
+        string.ensure_capacity(MAX_INLINE + 1);
+        assert!(!string.is_inline());
+
+        const LARGE_CAPACITY: usize = MAX_INLINE * 40;
+        string.ensure_capacity(LARGE_CAPACITY);
+        assert!(string.capacity() >= LARGE_CAPACITY);
+
+        string.ensure_capacity(LARGE_CAPACITY / 2);
+        assert!(string.capacity() >= LARGE_CAPACITY);
+
+        // Check memory corruptions or size mishandling
+        assert!(string.len() == SHORT_TEXT.len());
+        assert!(string.as_str() == SHORT_TEXT);
+
+        for _ in 0..20 {
+            string = string + "1234567890";
+        }
+        // Read the entire string to check memory corruptions
+        format!("{}", string);
+        assert!(string.capacity() >= LARGE_CAPACITY);
+        assert!(string.len() == SHORT_TEXT.len() + 10 * 20);
+    }
+
+    #[test]
     fn from_string() {
         let std_s =
             String::from("I am a teapot short and stout; here is my handle, here is my snout");

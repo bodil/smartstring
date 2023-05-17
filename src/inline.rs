@@ -56,6 +56,10 @@ impl DerefMut for InlineString {
 }
 
 impl GenericString for InlineString {
+    fn cap(&self) -> usize {
+        MAX_INLINE
+    }
+
     fn set_size(&mut self, size: usize) {
         self.marker.set_data(size as u8);
     }

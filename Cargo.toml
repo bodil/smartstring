@@ -27,6 +27,7 @@ harness = false
 [features]
 default = ["std"]
 std = []
+unstable = []
 test = ["std", "arbitrary", "arbitrary/derive"]
 
 [dependencies]
