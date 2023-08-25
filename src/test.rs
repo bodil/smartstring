@@ -555,10 +555,10 @@ mod tests {
     #[test]
     fn check_sizes() {
         assert_eq!(core::mem::size_of::<SmartString<Compact>>(), core::mem::size_of::<String>());
-        // assert_eq!(core::mem::size_of::<Option<SmartString<Compact>>>(), core::mem::size_of::<Option<String>>());
+        assert_eq!(core::mem::size_of::<Option<SmartString<Compact>>>(), core::mem::size_of::<Option<String>>());
 
         assert_eq!(core::mem::size_of::<SmartString<LazyCompact>>(), core::mem::size_of::<String>());
-        // assert_eq!(core::mem::size_of::<Option<SmartString<LazyCompact>>>(), core::mem::size_of::<Option<String>>());
+        assert_eq!(core::mem::size_of::<Option<SmartString<LazyCompact>>>(), core::mem::size_of::<Option<String>>());
     }
 
     #[test]
