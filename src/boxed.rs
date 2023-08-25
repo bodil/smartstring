@@ -27,13 +27,13 @@ pub(crate) struct BoxedString {
     ptr: NonNull<u8>,
 }
 
-/// Checks if a pointer is aligned to an even address (good)
-/// or an odd address (either actually an InlineString or very, very bad).
+/// Checks if a pointer is aligned to address which is a multiple of 4 (good)
+/// or any other mod value (either actually an InlineString or very, very bad).
 ///
-/// Returns `true` if aligned to an odd address, `false` if even. The sense of
+/// Returns `true` if aligned to a multiple of 4, `false` otherwise. The sense of
 /// the boolean is "does this look like an InlineString? true/false"
 fn check_alignment(ptr: *const u8) -> bool {
-    ptr.align_offset(2) > 0
+    ptr.align_offset(4) > 0
 }
 
 impl GenericString for BoxedString {
@@ -58,10 +58,10 @@ impl BoxedString {
     }
 
     fn layout_for(cap: usize) -> Layout {
-        // Always request memory that is specifically aligned to at least 2, so
-        // the least significant bit is guaranteed to be 0.
+        // Always request memory that is specifically aligned to at least 4, so
+        // the least significant two bits are guaranteed to be 0.
         let layout = Layout::array::<u8>(cap)
-            .and_then(|layout| layout.align_to(align_of::<u16>()))
+            .and_then(|layout| layout.align_to(align_of::<u32>()))
             .unwrap();
         assert!(
             layout.size() <= isize::MAX as usize,
@@ -77,7 +77,7 @@ impl BoxedString {
             Some(ptr) => ptr,
             None => alloc::alloc::handle_alloc_error(layout),
         };
-        debug_assert!(ptr.as_ptr().align_offset(2) == 0);
+        debug_assert!(ptr.as_ptr().align_offset(4) == 0);
         ptr
     }
 
@@ -92,7 +92,7 @@ impl BoxedString {
             None => alloc::alloc::handle_alloc_error(layout),
         };
         self.cap = cap;
-        debug_assert!(self.ptr.as_ptr().align_offset(2) == 0);
+        debug_assert!(self.ptr.as_ptr().align_offset(4) == 0);
     }
 
     pub(crate) fn ensure_capacity(&mut self, target_cap: usize) {

@@ -38,7 +38,7 @@ impl Marker {
         debug_assert!(data < 0x40);
 
         #[allow(unsafe_code)]
-        unsafe { NonZeroU8::new_unchecked(0x80 | (data << 1) | discriminant.bit()) } // SAFETY: (0x80 | x) != 0 is guaranteed for all x
+        unsafe { NonZeroU8::new_unchecked((data << 2) | 2 | discriminant.bit()) } // SAFETY: (2 | x) != 0 is guaranteed for all x
     }
 
     #[inline(always)]
@@ -58,7 +58,7 @@ impl Marker {
 
     #[inline(always)]
     pub(crate) const fn data(self) -> u8 {
-        (self.0.get() & 0x7f) >> 1
+        self.0.get() >> 2
     }
 
     #[inline(always)]
