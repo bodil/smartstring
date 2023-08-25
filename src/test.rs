@@ -527,19 +527,14 @@ mod tests {
     #[test]
     fn check_alignment() {
         use crate::boxed::BoxedString;
-        use crate::inline::InlineString;
         use crate::marker_byte::Discriminant;
 
-        let inline = InlineString::new();
-        let inline_ptr: *const InlineString = &inline;
-        let boxed_ptr: *const BoxedString = inline_ptr.cast();
-        #[allow(unsafe_code)]
-        let discriminant =
-            Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*boxed_ptr }));
-        assert_eq!(Discriminant::Inline, discriminant);
+        let boxed = BoxedString::from_str(32, "welp");
+        let discriminant = SmartString::<LazyCompact>::from_boxed(boxed).discriminant();
+        assert_eq!(Discriminant::Boxed, discriminant);
 
         let boxed = BoxedString::from_str(32, "welp");
-        let discriminant = Discriminant::from_bit(BoxedString::check_alignment(&boxed));
+        let discriminant = SmartString::<Compact>::from_boxed(boxed).discriminant();
         assert_eq!(Discriminant::Boxed, discriminant);
 
         let mut s = SmartString::<Compact>::new();

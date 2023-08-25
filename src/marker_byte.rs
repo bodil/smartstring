@@ -29,6 +29,17 @@ impl Discriminant {
     }
 }
 
+/// We now use this type to facilitate Option size optimization.
+/// The low two bits are used to determine both the discriminant and the None state.
+///
+/// 00000000 - None
+/// xxxxxx01 - unused
+/// xxxxxx10 - BoxedString
+/// xxxxxx11 - InlineString
+///
+/// BoxedString now uses TaggedPtr to ensure the low two bits form the 10 pattern.
+/// This guarantees the in-memory NonZeroU8 value is always in a valid state and that it matches the
+/// tagging convention of Marker.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Marker(NonZeroU8);
 

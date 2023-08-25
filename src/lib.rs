@@ -135,6 +135,9 @@ pub use config::{Compact, LazyCompact, SmartStringMode, MAX_INLINE};
 mod marker_byte;
 use marker_byte::Discriminant;
 
+mod tagged_ptr;
+use tagged_ptr::TaggedPtr;
+
 mod inline;
 use inline::InlineString;
 
@@ -297,10 +300,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     }
 
     fn discriminant(&self) -> Discriminant {
-        let str_ptr: *const BoxedString =
-            &self.data as *const _ as *const BoxedString;
-        #[allow(unsafe_code)]
-        Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*str_ptr }))
+        self.data.marker.discriminant()
     }
 
     fn cast(&self) -> StringCast<'_> {
