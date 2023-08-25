@@ -117,7 +117,7 @@ use core::{
     hash::{Hash, Hasher},
     iter::FromIterator,
     marker::PhantomData,
-    mem::{forget, MaybeUninit},
+    mem::forget,
     ops::{
         Add, Deref, DerefMut, Index, IndexMut, Range, RangeBounds, RangeFrom, RangeFull,
         RangeInclusive, RangeTo, RangeToInclusive,
@@ -189,7 +189,7 @@ pub mod alias {
 /// one - not without also storing that state in the inline representation, which
 /// would waste precious bytes for inline string data.
 pub struct SmartString<Mode: SmartStringMode> {
-    data: MaybeUninit<InlineString>,
+    data: InlineString,
     mode: PhantomData<Mode>,
 }
 
@@ -248,7 +248,7 @@ impl SmartString<LazyCompact> {
     /// once this happens.
     pub const fn new_const() -> Self {
         Self {
-            data: MaybeUninit::new(InlineString::new()),
+            data: InlineString::new(),
             mode: PhantomData,
         }
     }
@@ -263,7 +263,7 @@ impl SmartString<Compact> {
     /// once this happens.
     pub const fn new_const() -> Self {
         Self {
-            data: MaybeUninit::new(InlineString::new()),
+            data: InlineString::new(),
             mode: PhantomData,
         }
     }
@@ -278,10 +278,10 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
 
     fn from_boxed(boxed: BoxedString) -> Self {
         let mut out = Self {
-            data: MaybeUninit::uninit(),
+            data: InlineString::new(),
             mode: PhantomData,
         };
-        let data_ptr: *mut BoxedString = out.data.as_mut_ptr().cast();
+        let data_ptr: *mut BoxedString = &mut out.data as *mut _ as *mut BoxedString;
         #[allow(unsafe_code)]
         unsafe {
             data_ptr.write(boxed)
@@ -291,15 +291,14 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
 
     fn from_inline(inline: InlineString) -> Self {
         Self {
-            data: MaybeUninit::new(inline),
+            data: inline,
             mode: PhantomData,
         }
     }
 
     fn discriminant(&self) -> Discriminant {
-        // unsafe { self.data.assume_init() }.marker.discriminant()
         let str_ptr: *const BoxedString =
-            self.data.as_ptr().cast() as *const _ as *const BoxedString;
+            &self.data as *const _ as *const BoxedString;
         #[allow(unsafe_code)]
         Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*str_ptr }))
     }
@@ -307,17 +306,17 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     fn cast(&self) -> StringCast<'_> {
         #[allow(unsafe_code)]
         match self.discriminant() {
-            Discriminant::Inline => StringCast::Inline(unsafe { &*self.data.as_ptr() }),
-            Discriminant::Boxed => StringCast::Boxed(unsafe { &*self.data.as_ptr().cast() }),
+            Discriminant::Inline => StringCast::Inline(&self.data),
+            Discriminant::Boxed => StringCast::Boxed(unsafe { &*(&self.data as *const _ as *const BoxedString) }),
         }
     }
 
     fn cast_mut(&mut self) -> StringCastMut<'_> {
         #[allow(unsafe_code)]
         match self.discriminant() {
-            Discriminant::Inline => StringCastMut::Inline(unsafe { &mut *self.data.as_mut_ptr() }),
+            Discriminant::Inline => StringCastMut::Inline(&mut self.data),
             Discriminant::Boxed => {
-                StringCastMut::Boxed(unsafe { &mut *self.data.as_mut_ptr().cast() })
+                StringCastMut::Boxed(unsafe { &mut *(&mut self.data as *mut _ as *mut BoxedString) })
             }
         }
     }
@@ -325,9 +324,9 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
     fn cast_into(mut self) -> StringCastInto {
         #[allow(unsafe_code)]
         match self.discriminant() {
-            Discriminant::Inline => StringCastInto::Inline(unsafe { self.data.assume_init() }),
+            Discriminant::Inline => StringCastInto::Inline(self.data),
             Discriminant::Boxed => StringCastInto::Boxed(unsafe {
-                let boxed_ptr: *mut BoxedString = self.data.as_mut_ptr().cast();
+                let boxed_ptr: *mut BoxedString = &mut self.data as *mut _ as *mut BoxedString;
                 let string = boxed_ptr.read();
                 forget(self);
                 string
@@ -337,7 +336,7 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
 
     fn promote_from(&mut self, string: BoxedString) {
         debug_assert!(self.discriminant() == Discriminant::Inline);
-        let data: *mut BoxedString = self.data.as_mut_ptr().cast();
+        let data: *mut BoxedString = &mut self.data as *mut _ as *mut BoxedString;
         #[allow(unsafe_code)]
         unsafe {
             data.write(string)
@@ -362,11 +361,11 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
                 false
             } else {
                 let s: &str = string.deref();
-                let inlined = s.into();
+                let inlined: InlineString = s.into();
                 #[allow(unsafe_code)]
                 unsafe {
                     drop_in_place(string);
-                    self.data.as_mut_ptr().write(inlined);
+                    core::ptr::write(&mut self.data, inlined);
                 }
                 true
             }

@@ -553,6 +553,15 @@ mod tests {
     }
 
     #[test]
+    fn check_sizes() {
+        assert_eq!(core::mem::size_of::<SmartString<Compact>>(), core::mem::size_of::<String>());
+        // assert_eq!(core::mem::size_of::<Option<SmartString<Compact>>>(), core::mem::size_of::<Option<String>>());
+
+        assert_eq!(core::mem::size_of::<SmartString<LazyCompact>>(), core::mem::size_of::<String>());
+        // assert_eq!(core::mem::size_of::<Option<SmartString<LazyCompact>>>(), core::mem::size_of::<Option<String>>());
+    }
+
+    #[test]
     fn from_string() {
         let std_s =
             String::from("I am a teapot short and stout; here is my handle, here is my snout");
