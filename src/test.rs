@@ -527,19 +527,14 @@ mod tests {
     #[test]
     fn check_alignment() {
         use crate::boxed::BoxedString;
-        use crate::inline::InlineString;
         use crate::marker_byte::Discriminant;
 
-        let inline = InlineString::new();
-        let inline_ptr: *const InlineString = &inline;
-        let boxed_ptr: *const BoxedString = inline_ptr.cast();
-        #[allow(unsafe_code)]
-        let discriminant =
-            Discriminant::from_bit(BoxedString::check_alignment(unsafe { &*boxed_ptr }));
-        assert_eq!(Discriminant::Inline, discriminant);
+        let boxed = BoxedString::from_str(32, "welp");
+        let discriminant = SmartString::<LazyCompact>::from_boxed(boxed).discriminant();
+        assert_eq!(Discriminant::Boxed, discriminant);
 
         let boxed = BoxedString::from_str(32, "welp");
-        let discriminant = Discriminant::from_bit(BoxedString::check_alignment(&boxed));
+        let discriminant = SmartString::<Compact>::from_boxed(boxed).discriminant();
         assert_eq!(Discriminant::Boxed, discriminant);
 
         let mut s = SmartString::<Compact>::new();
@@ -550,6 +545,73 @@ mod tests {
         assert_eq!(Discriminant::Boxed, s.discriminant());
         s.clear();
         assert_eq!(Discriminant::Inline, s.discriminant());
+    }
+
+    #[test]
+    fn check_sizes() {
+        assert_eq!(core::mem::size_of::<SmartString<Compact>>(), core::mem::size_of::<String>());
+        assert_eq!(core::mem::size_of::<Option<SmartString<Compact>>>(), core::mem::size_of::<Option<String>>());
+
+        assert_eq!(core::mem::size_of::<SmartString<LazyCompact>>(), core::mem::size_of::<String>());
+        assert_eq!(core::mem::size_of::<Option<SmartString<LazyCompact>>>(), core::mem::size_of::<Option<String>>());
+
+        // -------------------------
+
+        let mut empty_bucket: Vec<Option<SmartString<Compact>>> = vec![];
+        let mut short_bucket: Vec<Option<SmartString<Compact>>> = vec![];
+        let mut long_bucket: Vec<Option<SmartString<Compact>>> = vec![];
+        let mut none_bucket: Vec<Option<SmartString<Compact>>> = vec![];
+
+        // make sure we shift around the allocation addresses by doing multiple of them and keeping the results
+        for _ in 0..1024 {
+            empty_bucket.push(Some(SmartString::new()));
+            empty_bucket.push(Some(SmartString::from("")));
+            short_bucket.push(Some(SmartString::from("hello")));
+            long_bucket.push(Some(SmartString::from("this is a really long line of text that will not be able to be inlined")));
+            none_bucket.push(None);
+        }
+
+        for v in empty_bucket {
+            assert_eq!(v.unwrap().as_str(), "");
+        }
+        for v in short_bucket {
+            assert_eq!(v.unwrap().as_str(), "hello");
+        }
+        for v in long_bucket {
+            assert_eq!(v.unwrap().as_str(), "this is a really long line of text that will not be able to be inlined");
+        }
+        for v in none_bucket {
+            assert!(v.is_none());
+        }
+
+        // -------------------------
+
+        let mut empty_bucket: Vec<Option<SmartString<LazyCompact>>> = vec![];
+        let mut short_bucket: Vec<Option<SmartString<LazyCompact>>> = vec![];
+        let mut long_bucket: Vec<Option<SmartString<LazyCompact>>> = vec![];
+        let mut none_bucket: Vec<Option<SmartString<LazyCompact>>> = vec![];
+
+        // make sure we shift around the allocation addresses by doing multiple of them and keeping the results
+        for _ in 0..1024 {
+            empty_bucket.push(Some(SmartString::new()));
+            empty_bucket.push(Some(SmartString::from("")));
+            short_bucket.push(Some(SmartString::from("hello")));
+            long_bucket.push(Some(SmartString::from("this is a really long line of text that will not be able to be inlined")));
+            none_bucket.push(None);
+        }
+
+        for v in empty_bucket {
+            assert_eq!(v.unwrap().as_str(), "");
+        }
+        for v in short_bucket {
+            assert_eq!(v.unwrap().as_str(), "hello");
+        }
+        for v in long_bucket {
+            assert_eq!(v.unwrap().as_str(), "this is a really long line of text that will not be able to be inlined");
+        }
+        for v in none_bucket {
+            assert!(v.is_none());
+        }
     }
 
     #[test]

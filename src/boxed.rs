@@ -6,15 +6,15 @@ use alloc::{alloc::Layout, string::String};
 use core::{
     mem::align_of,
     ops::{Deref, DerefMut},
-    ptr::NonNull,
 };
 
 use crate::{ops::GenericString, MAX_INLINE};
+use crate::TaggedPtr;
 
 #[cfg(target_endian = "little")]
 #[repr(C)]
 pub(crate) struct BoxedString {
-    ptr: NonNull<u8>,
+    ptr: TaggedPtr,
     cap: usize,
     len: usize,
 }
@@ -24,16 +24,7 @@ pub(crate) struct BoxedString {
 pub(crate) struct BoxedString {
     len: usize,
     cap: usize,
-    ptr: NonNull<u8>,
-}
-
-/// Checks if a pointer is aligned to an even address (good)
-/// or an odd address (either actually an InlineString or very, very bad).
-///
-/// Returns `true` if aligned to an odd address, `false` if even. The sense of
-/// the boolean is "does this look like an InlineString? true/false"
-fn check_alignment(ptr: *const u8) -> bool {
-    ptr.align_offset(2) > 0
+    ptr: TaggedPtr,
 }
 
 impl GenericString for BoxedString {
@@ -45,7 +36,7 @@ impl GenericString for BoxedString {
     fn as_mut_capacity_slice(&mut self) -> &mut [u8] {
         #[allow(unsafe_code)]
         unsafe {
-            core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity())
+            core::slice::from_raw_parts_mut(self.ptr.as_non_null().as_ptr(), self.capacity())
         }
     }
 }
@@ -53,15 +44,11 @@ impl GenericString for BoxedString {
 impl BoxedString {
     const MINIMAL_CAPACITY: usize = MAX_INLINE * 2;
 
-    pub(crate) fn check_alignment(this: &Self) -> bool {
-        check_alignment(this.ptr.as_ptr())
-    }
-
     fn layout_for(cap: usize) -> Layout {
-        // Always request memory that is specifically aligned to at least 2, so
-        // the least significant bit is guaranteed to be 0.
+        // Always request memory that is specifically aligned to at least 4, so
+        // the least significant two bits are guaranteed to be 0.
         let layout = Layout::array::<u8>(cap)
-            .and_then(|layout| layout.align_to(align_of::<u16>()))
+            .and_then(|layout| layout.align_to(align_of::<u32>()))
             .unwrap();
         assert!(
             layout.size() <= isize::MAX as usize,
@@ -70,29 +57,29 @@ impl BoxedString {
         layout
     }
 
-    fn alloc(cap: usize) -> NonNull<u8> {
+    fn alloc(cap: usize) -> TaggedPtr {
         let layout = Self::layout_for(cap);
         #[allow(unsafe_code)]
-        let ptr = match NonNull::new(unsafe { alloc::alloc::alloc(layout) }) {
+        let ptr = match TaggedPtr::new(unsafe { alloc::alloc::alloc(layout) }) {
             Some(ptr) => ptr,
             None => alloc::alloc::handle_alloc_error(layout),
         };
-        debug_assert!(ptr.as_ptr().align_offset(2) == 0);
+        debug_assert!(ptr.as_non_null().as_ptr().align_offset(4) == 0);
         ptr
     }
 
     fn realloc(&mut self, cap: usize) {
         let layout = Self::layout_for(cap);
         let old_layout = Self::layout_for(self.cap);
-        let old_ptr = self.ptr.as_ptr();
+        let old_ptr = self.ptr.as_non_null().as_ptr();
         #[allow(unsafe_code)]
         let ptr = unsafe { alloc::alloc::realloc(old_ptr, old_layout, layout.size()) };
-        self.ptr = match NonNull::new(ptr) {
+        self.ptr = match TaggedPtr::new(ptr) {
             Some(ptr) => ptr,
             None => alloc::alloc::handle_alloc_error(layout),
         };
         self.cap = cap;
-        debug_assert!(self.ptr.as_ptr().align_offset(2) == 0);
+        debug_assert!(self.ptr.as_non_null().as_ptr().align_offset(4) == 0);
     }
 
     pub(crate) fn ensure_capacity(&mut self, target_cap: usize) {
@@ -132,7 +119,7 @@ impl Drop for BoxedString {
     fn drop(&mut self) {
         #[allow(unsafe_code)]
         unsafe {
-            alloc::alloc::dealloc(self.ptr.as_ptr(), Self::layout_for(self.cap))
+            alloc::alloc::dealloc(self.ptr.as_non_null().as_ptr(), Self::layout_for(self.cap))
         }
     }
 }
@@ -149,7 +136,7 @@ impl Deref for BoxedString {
     fn deref(&self) -> &Self::Target {
         #[allow(unsafe_code)]
         unsafe {
-            core::str::from_utf8_unchecked(core::slice::from_raw_parts(self.ptr.as_ptr(), self.len))
+            core::str::from_utf8_unchecked(core::slice::from_raw_parts(self.ptr.as_non_null().as_ptr(), self.len))
         }
     }
 }
@@ -159,7 +146,7 @@ impl DerefMut for BoxedString {
         #[allow(unsafe_code)]
         unsafe {
             core::str::from_utf8_unchecked_mut(core::slice::from_raw_parts_mut(
-                self.ptr.as_ptr(),
+                self.ptr.as_non_null().as_ptr(),
                 self.len,
             ))
         }
@@ -174,6 +161,8 @@ impl From<String> for BoxedString {
         } else {
             #[cfg(has_allocator)]
             {
+                use core::ptr::NonNull;
+
                 // TODO: Use String::into_raw_parts when stabilised, meanwhile let's get unsafe
                 let len = s.len();
                 let cap = s.capacity();
@@ -190,7 +179,7 @@ impl From<String> for BoxedString {
                     Self {
                         cap,
                         len,
-                        ptr: aligned_ptr.cast(),
+                        ptr: TaggedPtr::new(aligned_ptr.as_ptr() as *mut _).unwrap(),
                     }
                 } else {
                     Self::from_str(cap, &s)
@@ -215,7 +204,7 @@ impl From<BoxedString> for String {
             use alloc::alloc::Allocator;
             let allocator = alloc::alloc::Global;
             if let Ok(aligned_ptr) =
-                unsafe { allocator.grow(ptr, BoxedString::layout_for(cap), new_layout) }
+                unsafe { allocator.grow(ptr.as_non_null(), BoxedString::layout_for(cap), new_layout) }
             {
                 core::mem::forget(s);
                 unsafe { String::from_raw_parts(aligned_ptr.as_ptr().cast(), len, cap) }
