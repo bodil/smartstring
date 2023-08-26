@@ -179,7 +179,7 @@ impl From<String> for BoxedString {
                     Self {
                         cap,
                         len,
-                        ptr: aligned_ptr.cast(),
+                        ptr: TaggedPtr::new(aligned_ptr.as_ptr() as *mut _).unwrap(),
                     }
                 } else {
                     Self::from_str(cap, &s)
@@ -204,7 +204,7 @@ impl From<BoxedString> for String {
             use alloc::alloc::Allocator;
             let allocator = alloc::alloc::Global;
             if let Ok(aligned_ptr) =
-                unsafe { allocator.grow(ptr, BoxedString::layout_for(cap), new_layout) }
+                unsafe { allocator.grow(ptr.as_non_null(), BoxedString::layout_for(cap), new_layout) }
             {
                 core::mem::forget(s);
                 unsafe { String::from_raw_parts(aligned_ptr.as_ptr().cast(), len, cap) }
