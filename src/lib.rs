@@ -126,8 +126,7 @@ use core::{
     str::FromStr,
 };
 
-#[cfg(feature = "std")]
-use std::borrow::Cow;
+use alloc::borrow::Cow;
 
 mod config;
 pub use config::{Compact, LazyCompact, SmartStringMode, MAX_INLINE};
@@ -692,7 +691,6 @@ impl<Mode: SmartStringMode> From<Box<str>> for SmartString<Mode> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<Mode: SmartStringMode> From<Cow<'_, str>> for SmartString<Mode> {
     fn from(string: Cow<'_, str>) -> Self {
         if string.len() > MAX_INLINE {
