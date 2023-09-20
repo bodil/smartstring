@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2023-09-20
+
+### ADDED
+
+-   Added support for [Bincode](https://docs.rs/bincode/2.0.0-rc.3/bincode/). Use `bincode`
+    feature to enable it.
+
 ## [1.0.1] - 2022-03-24
 
 ### FIXED
