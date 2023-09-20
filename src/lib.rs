@@ -82,7 +82,7 @@
 //!
 //! ```no_compile
 //! [dependencies]
-//! smartstring = { version = "*", features = ["proptest", "serde"] }
+//! smartstring = { version = "*", features = ["proptest", "serde", "bincode"] }
 //! ```
 //!
 //! | Feature | Description |
@@ -90,9 +90,12 @@
 //! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`]. |
 //! | [`proptest`](https://crates.io/crates/proptest) | A strategy for generating [`SmartString`]s from a regular expression. |
 //! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`]. |
+//! | [`bincode`](https://crates.io/crates/bincode) | [`Encode`][Encode] and [`Decode`][Decode] implementations for [`SmartString`]. |
 //!
 //! [Serialize]: https://docs.rs/serde/latest/serde/trait.Serialize.html
 //! [Deserialize]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
+//! [Encode]: https://docs.rs/bincode/2.0.0-rc.3/bincode/enc/trait.Encode.html
+//! [Decode]: https://docs.rs/bincode/2.0.0-rc.3/bincode/de/trait.Decode.html
 //! [Arbitrary]: https://docs.rs/arbitrary/latest/arbitrary/trait.Arbitrary.html
 
 // Ensure all unsafe blocks get flagged for manual validation.
@@ -158,6 +161,9 @@ mod arbitrary;
 
 #[cfg(feature = "proptest")]
 pub mod proptest;
+
+#[cfg(feature = "bincode")]
+mod bincode;
 
 /// Convenient type aliases.
 pub mod alias {

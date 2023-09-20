@@ -1,6 +1,6 @@
 [package]
 name = "smartstring"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["Bodil Stokke <bodil@bodil.org>"]
 edition = "2021"
 license = "MPL-2.0+"
@@ -15,7 +15,7 @@ rust-version = "1.57"
 build = "./build.rs"
 
 [package.metadata.docs.rs]
-features = ["arbitrary", "proptest", "serde"]
+features = ["arbitrary", "proptest", "serde", "bincode"]
 
 [badges]
 travis-ci = { repository = "bodil/smartstring", branch = "master" }
@@ -25,15 +25,17 @@ name = "smartstring"
 harness = false
 
 [features]
-default = ["std"]
+default = ["std", "bincode"]
 std = []
 test = ["std", "arbitrary", "arbitrary/derive"]
+bincode = ["dep:bincode"]
 
 [dependencies]
 static_assertions = "1"
 serde = { version = "1", optional = true }
 arbitrary = { version = "1", optional = true }
 proptest = { version = "1", optional = true }
+bincode = { version = "2.0.0-rc.3", features=["alloc"], optional = true }
 
 [dev-dependencies]
 proptest = "1"
