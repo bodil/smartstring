@@ -37,7 +37,7 @@ proptest = { version = "1", optional = true }
 
 [dev-dependencies]
 proptest = "1"
-proptest-derive = "0.3"
+proptest-derive = "0.6"
 criterion = "0.3"
 rand = "0.8"
 serde_test = "1"
