@@ -643,6 +643,12 @@ impl<Mode: SmartStringMode> IndexMut<RangeToInclusive<usize>> for SmartString<Mo
     }
 }
 
+impl<Mode: SmartStringMode> From<char> for SmartString<Mode> {
+    fn from(c: char) -> Self {
+        Self::from_inline(c.into())
+    }
+}
+
 impl<Mode: SmartStringMode> From<&'_ str> for SmartString<Mode> {
     fn from(string: &'_ str) -> Self {
         if string.len() > MAX_INLINE {

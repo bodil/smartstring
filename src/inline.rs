@@ -80,6 +80,17 @@ impl InlineString {
     }
 }
 
+impl From<char> for InlineString {
+    fn from(c: char) -> Self {
+        let len = c.len_utf8();
+        let mut out = Self::new();
+
+        out.marker = Marker::new_inline(len as u8);
+        c.encode_utf8(&mut out.data);
+        out
+    }
+}
+
 impl From<&str> for InlineString {
     fn from(string: &str) -> Self {
         let len = string.len();

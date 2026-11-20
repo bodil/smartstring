@@ -563,4 +563,15 @@ mod tests {
         assert_eq!(std_s, unsmart_s);
         // This test exists just to provoke a Miri problem when dropping a string created by SmartString::into::<String>() (#28)
     }
+
+    #[test]
+    fn from_char() {
+        let c = 'a';
+        let std_s = String::from(c);
+        let smart_s = SmartString::<LazyCompact>::from(c);
+        let unsmart_s = smart_s.clone().to_string();
+        assert_eq!(smart_s, std_s);
+        assert_eq!(smart_s, unsmart_s);
+        assert_eq!(std_s, unsmart_s);
+    }
 }
