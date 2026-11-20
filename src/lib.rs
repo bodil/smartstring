@@ -88,6 +88,7 @@
 //! | Feature | Description |
 //! | ------- | ----------- |
 //! | [`arbitrary`](https://crates.io/crates/arbitrary) | [`Arbitrary`][Arbitrary] implementation for [`SmartString`]. |
+//! | `unstable` | Features only available with a nightly Rust compiler. Currently this is only the [`extend_reserve`][core::iter::traits::collect::Extend::extend_reserve] implementation for [`SmartString`]. |
 //! | [`proptest`](https://crates.io/crates/proptest) | A strategy for generating [`SmartString`]s from a regular expression. |
 //! | [`serde`](https://crates.io/crates/serde) | [`Serialize`][Serialize] and [`Deserialize`][Deserialize] implementations for [`SmartString`]. |
 //!
@@ -102,6 +103,7 @@
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(needs_allocator_feature, feature(allocator_api))]
+#![cfg_attr(feature = "unstable", feature(extend_one))]
 
 extern crate alloc;
 
@@ -421,6 +423,17 @@ impl<Mode: SmartStringMode> SmartString<Mode> {
         }
     }
 
+    /// Ensures that the string has a capacity of at least the given number of bytes.
+    /// This function will reallocate the string (and therefore unbox a boxed string)
+    /// in order to fit the new capacity.
+    ///
+    /// Note that if the string's capacity is already large enough, this function does nothing.
+    /// This also applies to inline strings, when `capacity` is less than or equal to
+    /// [`MAX_INLINE`].
+    pub fn ensure_capacity(&mut self, target_cap: usize) {
+        string_op_grow!(ops::EnsureCapacity, self, target_cap)
+    }
+
     /// Push a character to the end of the string.
     pub fn push(&mut self, ch: char) {
         string_op_grow!(ops::Push, self, ch)
@@ -710,6 +723,11 @@ impl<'a, Mode: SmartStringMode> Extend<&'a str> for SmartString<Mode> {
             self.push_str(item);
         }
     }
+
+    #[cfg(feature = "unstable")]
+    fn extend_one(&mut self, item: &'a str) {
+        self.push_str(item)
+    }
 }
 
 impl<'a, Mode: SmartStringMode> Extend<&'a char> for SmartString<Mode> {
@@ -718,6 +736,16 @@ impl<'a, Mode: SmartStringMode> Extend<&'a char> for SmartString<Mode> {
             self.push(*item);
         }
     }
+
+    #[cfg(feature = "unstable")]
+    fn extend_one(&mut self, item: &'a char) {
+        self.push(*item)
+    }
+
+    #[cfg(feature = "unstable")]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.ensure_capacity(self.capacity() + additional)
+    }
 }
 
 impl<Mode: SmartStringMode> Extend<char> for SmartString<Mode> {
@@ -725,6 +753,16 @@ impl<Mode: SmartStringMode> Extend<char> for SmartString<Mode> {
         for item in iter {
             self.push(item);
         }
+    }
+
+    #[cfg(feature = "unstable")]
+    fn extend_one(&mut self, item: char) {
+        self.push(item)
+    }
+
+    #[cfg(feature = "unstable")]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.ensure_capacity(self.capacity() + additional)
     }
 }
 
@@ -742,6 +780,11 @@ impl<Mode: SmartStringMode> Extend<String> for SmartString<Mode> {
             self.push_str(&item);
         }
     }
+
+    #[cfg(feature = "unstable")]
+    fn extend_one(&mut self, item: String) {
+        self.push_str(&item)
+    }
 }
 
 impl<'a, Mode: SmartStringMode + 'a> Extend<&'a SmartString<Mode>> for SmartString<Mode> {
@@ -750,6 +793,11 @@ impl<'a, Mode: SmartStringMode + 'a> Extend<&'a SmartString<Mode>> for SmartStri
             self.push_str(item);
         }
     }
+
+    #[cfg(feature = "unstable")]
+    fn extend_one(&mut self, item: &'a SmartString<Mode>) {
+        self.push_str(item)
+    }
 }
 
 impl<'a, Mode: SmartStringMode> Extend<&'a String> for SmartString<Mode> {
@@ -757,6 +805,11 @@ impl<'a, Mode: SmartStringMode> Extend<&'a String> for SmartString<Mode> {
         for item in iter {
             self.push_str(item);
         }
+    }
+
+    #[cfg(feature = "unstable")]
+    fn extend_one(&mut self, item: &'a String) {
+        self.push_str(item)
     }
 }
 

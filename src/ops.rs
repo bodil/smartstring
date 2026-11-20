@@ -18,6 +18,7 @@ use core::{
 };
 
 pub(crate) trait GenericString: Deref<Target = str> + DerefMut<Target = str> {
+    fn cap(&self) -> usize;
     fn set_size(&mut self, size: usize);
     fn as_mut_capacity_slice(&mut self) -> &mut [u8];
 }
@@ -133,6 +134,15 @@ impl Truncate {
             this.set_size(new_len)
         }
     }
+}
+
+pub(crate) struct EnsureCapacity;
+impl EnsureCapacity {
+    pub(crate) fn cap<S: GenericString>(this: &S, target_cap: usize) -> usize {
+        this.cap().max(target_cap)
+    }
+
+    pub(crate) fn op<S: GenericString>(_this: &mut S, _target_cap: usize) {}
 }
 
 pub(crate) struct Pop;
