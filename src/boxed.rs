@@ -32,6 +32,7 @@ pub(crate) struct BoxedString {
 ///
 /// Returns `true` if aligned to an odd address, `false` if even. The sense of
 /// the boolean is "does this look like an InlineString? true/false"
+#[inline]
 fn check_alignment(ptr: *const u8) -> bool {
     ptr.align_offset(2) > 0
 }
@@ -53,6 +54,7 @@ impl GenericString for BoxedString {
 impl BoxedString {
     const MINIMAL_CAPACITY: usize = MAX_INLINE * 2;
 
+    #[inline]
     pub(crate) fn check_alignment(this: &Self) -> bool {
         check_alignment(this.ptr.as_ptr())
     }
